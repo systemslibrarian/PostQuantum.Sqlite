@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!-- Package metadata -->
+    <PackageId>PostQuantum.Sqlite</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Paul Clark</Authors>
+    <Description>Post-quantum key lifecycle for SQLCipher-encrypted SQLite databases. Wraps the AES-256 data encryption key under ML-KEM-768 encapsulation, supports multi-recipient sharing, and signs the key manifest with ML-DSA-65. AES-256 page encryption is already quantum-resistant; this package makes the key wrapping, sharing, and signing quantum-resistant too.</Description>
+    <PackageTags>post-quantum;pqc;sqlite;sqlcipher;ml-kem;ml-dsa;kyber;dilithium;encryption;harvest-now-decrypt-later</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/systemslibrarian/PostQuantum.Sqlite</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/systemslibrarian/PostQuantum.Sqlite</PackageProjectUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <None Include="../../docs/SPEC.md" Pack="true" PackagePath="/docs/" />
+    <None Include="../../docs/THREAT-MODEL.md" Pack="true" PackagePath="/docs/" />
+    <None Include="../../SECURITY.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="9.0.0" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" Version="2.1.10" />
+    <PackageReference Include="System.Formats.Cbor" Version="9.0.0" />
+  </ItemGroup>
+
+</Project>

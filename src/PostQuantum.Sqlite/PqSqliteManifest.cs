@@ -1,0 +1,454 @@
+using System.Formats.Cbor;
+using System.Security.Cryptography;
+using PostQuantum.Sqlite.Abstractions;
+
+namespace PostQuantum.Sqlite;
+
+public enum RecipientType : int
+{
+    Kem = 1,
+    Passphrase = 2,
+}
+
+/// <summary>One wrapped copy of the DEK, addressed to a single recipient.</summary>
+public sealed class RecipientEntry
+{
+    public required RecipientType Type { get; init; }
+
+    /// <summary>SHA-256 of the recipient's encapsulation key (KEM) or of the KDF salt (passphrase), first 16 bytes.</summary>
+    public required byte[] Fingerprint { get; init; }
+
+    /// <summary>KEM ciphertext (KEM recipients) or KDF salt (passphrase recipients).</summary>
+    public required byte[] KemCiphertextOrSalt { get; init; }
+
+    /// <summary>AES-256-GCM nonce used to wrap the DEK (12 bytes).</summary>
+    public required byte[] Nonce { get; init; }
+
+    /// <summary>DEK wrapped under the per-recipient KEK: 32-byte ciphertext || 16-byte GCM tag.</summary>
+    public required byte[] WrappedDek { get; init; }
+
+    /// <summary>KDF identifier + serialized parameters (passphrase recipients only).</summary>
+    public string? KdfId { get; init; }
+    public byte[]? KdfParameters { get; init; }
+}
+
+/// <summary>
+/// The .pqsm sidecar manifest: canonical CBOR, ML-DSA-65 signed, bound to its
+/// database file via the SQLCipher salt (first 16 plaintext bytes of the file),
+/// with a monotonic revision counter for application-level rollback detection.
+///
+/// Parsing is STRICT for version 1: unknown fields, duplicate fields, wrong
+/// types, non-canonical encoding, indefinite lengths, and out-of-spec field
+/// lengths are all hard rejections. A security manifest format must never be
+/// forgiving about input it did not produce.
+/// </summary>
+public sealed class PqSqliteManifest
+{
+    public const int CurrentVersion = 1;
+    public const string SidecarExtension = ".pqsm";
+
+    // ── Fixed field lengths (version 1) ───────────────────────────────────
+    public const int SaltLength = 16;            // SQLCipher file salt
+    public const int FingerprintLength = 16;     // SHA-256 truncated
+    public const int NonceLength = 12;           // AES-GCM
+    public const int WrappedDekLength = 48;      // 32-byte DEK + 16-byte tag
+    public const int PassphraseSaltLength = 32;  // KDF salt for passphrase recipients
+
+    // ── Structural bounds (DoS hardening; exact sizes enforced later
+    //    against the configured algorithms in PqSqliteVault) ───────────────
+    private const int MaxAlgorithmIdLength = 64;
+    private const int MaxKdfIdLength = 64;
+    private const int MaxKdfParametersLength = 1024;
+    private const int MaxVariableFieldLength = 16384; // KEM ct, signer pk, signature upper bound
+    private const int MaxRecipients = 1024;
+
+    // ── CBOR map keys, version 1. Top level: 1..7 unsigned, 8 signed. ─────
+    private const int KeyVersion = 1;
+    private const int KeyKemAlg = 2;
+    private const int KeySigAlg = 3;
+    private const int KeySalt = 4;
+    private const int KeyRecipients = 5;
+    private const int KeySignerPk = 6;
+    private const int KeyRevision = 7;
+    private const int KeySignature = 8;
+
+    private const int RKeyType = 1;
+    private const int RKeyFingerprint = 2;
+    private const int RKeyCtOrSalt = 3;
+    private const int RKeyNonce = 4;
+    private const int RKeyWrappedDek = 5;
+    private const int RKeyKdfId = 6;
+    private const int RKeyKdfParams = 7;
+
+    public int Version { get; private set; } = CurrentVersion;
+    public required string KemAlgorithmId { get; init; }
+    public required string SignatureAlgorithmId { get; init; }
+
+    /// <summary>SQLCipher salt — first 16 bytes of the database file. Binds manifest to DB.</summary>
+    public required byte[] DatabaseSalt { get; init; }
+
+    public List<RecipientEntry> Recipients { get; } = new();
+
+    public required byte[] SignerPublicKey { get; init; }
+
+    /// <summary>
+    /// Monotonic revision, starting at 1, incremented on every mutation and
+    /// covered by the signature. The manifest format cannot prevent rollback
+    /// (an attacker replaying an older validly-signed manifest + matching DB
+    /// copy); applications that need rollback detection must track the last
+    /// known revision out-of-band and pass it to PqSqliteVault.Open.
+    /// </summary>
+    public long Revision { get; set; } = 1;
+
+    public byte[]? Signature { get; private set; }
+
+    // ── Signing ────────────────────────────────────────────────────────────
+
+    /// <summary>Canonical CBOR bytes of everything except the signature — the signed payload.</summary>
+    public byte[] GetSignedPayload()
+    {
+        var writer = new CborWriter(CborConformanceMode.Canonical);
+        WriteBody(writer, includeSignature: false);
+        return writer.Encode();
+    }
+
+    public void Sign(ISignatureAlgorithm signer, ReadOnlySpan<byte> signingPrivateKey)
+    {
+        if (signer.AlgorithmId != SignatureAlgorithmId)
+            throw new PqSqliteException($"Signer is {signer.AlgorithmId} but manifest declares {SignatureAlgorithmId}.");
+        Signature = signer.Sign(signingPrivateKey, GetSignedPayload());
+    }
+
+    /// <summary>Verify the manifest signature and its binding to the database salt. Throws on failure.</summary>
+    public void Verify(ISignatureAlgorithm verifier, ReadOnlySpan<byte> actualDatabaseSalt)
+    {
+        if (Signature is null)
+            throw new PqSqliteException("Manifest is unsigned.");
+        if (verifier.AlgorithmId != SignatureAlgorithmId)
+            throw new PqSqliteException($"Manifest declares signature algorithm '{SignatureAlgorithmId}' but verifier is '{verifier.AlgorithmId}'.");
+        if (SignerPublicKey.Length != verifier.PublicKeySizeInBytes)
+            throw new PqSqliteException("Signer public key has invalid length for the declared algorithm.");
+        if (Signature.Length != verifier.SignatureSizeInBytes)
+            throw new PqSqliteException("Signature has invalid length for the declared algorithm.");
+        if (!actualDatabaseSalt.SequenceEqual(DatabaseSalt))
+            throw new PqSqliteException("Manifest does not belong to this database file (salt mismatch). Possible substitution.");
+        if (!verifier.Verify(SignerPublicKey, GetSignedPayload(), Signature))
+            throw new PqSqliteException("Manifest signature verification FAILED. The manifest has been tampered with or re-signed by an untrusted key.");
+    }
+
+    // ── Recipient lookup ──────────────────────────────────────────────────
+
+    public RecipientEntry? FindByFingerprint(ReadOnlySpan<byte> fingerprint)
+    {
+        foreach (var r in Recipients)
+            if (fingerprint.SequenceEqual(r.Fingerprint)) return r;
+        return null;
+    }
+
+    public static byte[] FingerprintOf(ReadOnlySpan<byte> keyMaterial) =>
+        SHA256.HashData(keyMaterial)[..FingerprintLength];
+
+    // ── CBOR serialization ────────────────────────────────────────────────
+
+    public byte[] Serialize()
+    {
+        var writer = new CborWriter(CborConformanceMode.Canonical);
+        WriteBody(writer, includeSignature: true);
+        return writer.Encode();
+    }
+
+    private void WriteBody(CborWriter writer, bool includeSignature)
+    {
+        bool signed = includeSignature && Signature is not null;
+        writer.WriteStartMap(signed ? 8 : 7);
+
+        writer.WriteInt32(KeyVersion);    writer.WriteInt32(Version);
+        writer.WriteInt32(KeyKemAlg);     writer.WriteTextString(KemAlgorithmId);
+        writer.WriteInt32(KeySigAlg);     writer.WriteTextString(SignatureAlgorithmId);
+        writer.WriteInt32(KeySalt);       writer.WriteByteString(DatabaseSalt);
+
+        writer.WriteInt32(KeyRecipients);
+        writer.WriteStartArray(Recipients.Count);
+        foreach (var r in Recipients)
+        {
+            bool hasKdf = r.Type == RecipientType.Passphrase;
+            writer.WriteStartMap(hasKdf ? 7 : 5);
+            writer.WriteInt32(RKeyType);        writer.WriteInt32((int)r.Type);
+            writer.WriteInt32(RKeyFingerprint); writer.WriteByteString(r.Fingerprint);
+            writer.WriteInt32(RKeyCtOrSalt);    writer.WriteByteString(r.KemCiphertextOrSalt);
+            writer.WriteInt32(RKeyNonce);       writer.WriteByteString(r.Nonce);
+            writer.WriteInt32(RKeyWrappedDek);  writer.WriteByteString(r.WrappedDek);
+            if (hasKdf)
+            {
+                writer.WriteInt32(RKeyKdfId);     writer.WriteTextString(r.KdfId ?? throw new PqSqliteException("Passphrase recipient missing KdfId."));
+                writer.WriteInt32(RKeyKdfParams); writer.WriteByteString(r.KdfParameters ?? Array.Empty<byte>());
+            }
+            writer.WriteEndMap();
+        }
+        writer.WriteEndArray();
+
+        writer.WriteInt32(KeySignerPk);  writer.WriteByteString(SignerPublicKey);
+        writer.WriteInt32(KeyRevision);  writer.WriteInt64(Revision);
+
+        if (signed)
+        {
+            writer.WriteInt32(KeySignature); writer.WriteByteString(Signature!);
+        }
+
+        writer.WriteEndMap();
+    }
+
+    /// <summary>
+    /// Strict v1 parser. Canonical conformance (definite lengths, sorted unique
+    /// map keys), exhaustive key whitelisting, duplicate detection, type
+    /// enforcement (wrong CBOR major types throw from the reader), exact
+    /// lengths for fixed-size fields, and hard upper bounds on variable fields.
+    /// </summary>
+    public static PqSqliteManifest Deserialize(byte[] cbor)
+    {
+        ArgumentNullException.ThrowIfNull(cbor);
+        try
+        {
+            return DeserializeCore(cbor);
+        }
+        catch (Exception ex) when (ex is CborContentException or InvalidOperationException or OverflowException)
+        {
+            throw new PqSqliteException("Manifest is malformed (strict CBOR validation failed).", ex);
+        }
+    }
+
+    private static PqSqliteManifest DeserializeCore(byte[] cbor)
+    {
+        var reader = new CborReader(cbor, CborConformanceMode.Canonical);
+        int? mapCountNullable = reader.ReadStartMap();
+        if (mapCountNullable is not (7 or 8))
+            throw new PqSqliteException($"Manifest: expected 7 (unsigned) or 8 (signed) top-level fields, got {mapCountNullable?.ToString() ?? "indefinite"}.");
+        int mapCount = mapCountNullable.Value;
+
+        var seen = new HashSet<int>();
+        int version = 0;
+        long revision = -1;
+        string? kemId = null, sigId = null;
+        byte[]? salt = null, signerPk = null, signature = null;
+        List<RecipientEntry>? recipients = null;
+
+        for (int i = 0; i < mapCount; i++)
+        {
+            int key = reader.ReadInt32();
+            if (!seen.Add(key))
+                throw new PqSqliteException($"Manifest: duplicate field {key}.");
+
+            switch (key)
+            {
+                case KeyVersion:
+                    version = reader.ReadInt32();
+                    break;
+                case KeyKemAlg:
+                    kemId = ReadBoundedText(reader, MaxAlgorithmIdLength, "KEM algorithm id");
+                    break;
+                case KeySigAlg:
+                    sigId = ReadBoundedText(reader, MaxAlgorithmIdLength, "signature algorithm id");
+                    break;
+                case KeySalt:
+                    salt = ReadExactBytes(reader, SaltLength, "database salt");
+                    break;
+                case KeyRecipients:
+                    recipients = ReadRecipients(reader);
+                    break;
+                case KeySignerPk:
+                    signerPk = ReadBoundedBytes(reader, MaxVariableFieldLength, "signer public key");
+                    break;
+                case KeyRevision:
+                    revision = reader.ReadInt64();
+                    break;
+                case KeySignature:
+                    signature = ReadBoundedBytes(reader, MaxVariableFieldLength, "signature");
+                    break;
+                default:
+                    throw new PqSqliteException($"Manifest: unknown field {key} is not permitted in version {CurrentVersion}.");
+            }
+        }
+        reader.ReadEndMap();
+        if (reader.BytesRemaining != 0)
+            throw new PqSqliteException("Manifest: trailing bytes after CBOR document.");
+
+        if (version != CurrentVersion)
+            throw new PqSqliteException($"Unsupported manifest version {version}.");
+        if (kemId is null || sigId is null || salt is null || signerPk is null || recipients is null)
+            throw new PqSqliteException("Manifest is missing required fields.");
+        if (revision < 1)
+            throw new PqSqliteException("Manifest: revision must be present and >= 1.");
+        if (mapCount == 8 && signature is null)
+            throw new PqSqliteException("Manifest: 8 fields present but no signature field.");
+
+        var manifest = new PqSqliteManifest
+        {
+            KemAlgorithmId = kemId,
+            SignatureAlgorithmId = sigId,
+            DatabaseSalt = salt,
+            SignerPublicKey = signerPk,
+        };
+        manifest.Version = version;
+        manifest.Revision = revision;
+        manifest.Recipients.AddRange(recipients);
+        manifest.Signature = signature;
+        return manifest;
+    }
+
+    private static List<RecipientEntry> ReadRecipients(CborReader reader)
+    {
+        int count = (int)(reader.ReadStartArray()
+            ?? throw new PqSqliteException("Manifest: indefinite-length recipient array not allowed."));
+        if (count is < 1 or > MaxRecipients)
+            throw new PqSqliteException($"Manifest: recipient count {count} outside accepted range 1..{MaxRecipients}.");
+
+        var list = new List<RecipientEntry>(count);
+        for (int i = 0; i < count; i++)
+            list.Add(ReadRecipient(reader));
+        reader.ReadEndArray();
+
+        // Reject duplicate fingerprints — ambiguous recipient resolution is an attack surface.
+        for (int i = 0; i < list.Count; i++)
+            for (int j = i + 1; j < list.Count; j++)
+                if (list[i].Fingerprint.AsSpan().SequenceEqual(list[j].Fingerprint))
+                    throw new PqSqliteException("Manifest: duplicate recipient fingerprint.");
+        return list;
+    }
+
+    private static RecipientEntry ReadRecipient(CborReader reader)
+    {
+        int? mapCountNullable = reader.ReadStartMap();
+        if (mapCountNullable is not (5 or 7))
+            throw new PqSqliteException($"Recipient: expected 5 (KEM) or 7 (passphrase) fields, got {mapCountNullable?.ToString() ?? "indefinite"}.");
+        int mapCount = mapCountNullable.Value;
+
+        var seen = new HashSet<int>();
+        int type = 0;
+        byte[]? fp = null, ctOrSalt = null, nonce = null, wrapped = null, kdfParams = null;
+        string? kdfId = null;
+
+        for (int i = 0; i < mapCount; i++)
+        {
+            int key = reader.ReadInt32();
+            if (!seen.Add(key))
+                throw new PqSqliteException($"Recipient: duplicate field {key}.");
+
+            switch (key)
+            {
+                case RKeyType:        type = reader.ReadInt32(); break;
+                case RKeyFingerprint: fp = ReadExactBytes(reader, FingerprintLength, "recipient fingerprint"); break;
+                case RKeyCtOrSalt:    ctOrSalt = ReadBoundedBytes(reader, MaxVariableFieldLength, "KEM ciphertext / KDF salt"); break;
+                case RKeyNonce:       nonce = ReadExactBytes(reader, NonceLength, "AES-GCM nonce"); break;
+                case RKeyWrappedDek:  wrapped = ReadExactBytes(reader, WrappedDekLength, "wrapped DEK"); break;
+                case RKeyKdfId:       kdfId = ReadBoundedText(reader, MaxKdfIdLength, "KDF id"); break;
+                case RKeyKdfParams:   kdfParams = ReadBoundedBytes(reader, MaxKdfParametersLength, "KDF parameters"); break;
+                default:
+                    throw new PqSqliteException($"Recipient: unknown field {key} is not permitted in version {CurrentVersion}.");
+            }
+        }
+        reader.ReadEndMap();
+
+        if (fp is null || ctOrSalt is null || nonce is null || wrapped is null)
+            throw new PqSqliteException("Recipient entry is missing required fields.");
+
+        switch ((RecipientType)type)
+        {
+            case RecipientType.Kem:
+                if (mapCount != 5 || kdfId is not null || kdfParams is not null)
+                    throw new PqSqliteException("KEM recipient must have exactly fields 1-5 and no KDF fields.");
+                break;
+            case RecipientType.Passphrase:
+                if (mapCount != 7 || kdfId is null || kdfParams is null)
+                    throw new PqSqliteException("Passphrase recipient must have exactly fields 1-7 including KDF id and parameters.");
+                if (ctOrSalt.Length != PassphraseSaltLength)
+                    throw new PqSqliteException($"Passphrase recipient KDF salt must be exactly {PassphraseSaltLength} bytes.");
+                break;
+            default:
+                throw new PqSqliteException($"Recipient: unknown type {type}.");
+        }
+
+        return new RecipientEntry
+        {
+            Type = (RecipientType)type,
+            Fingerprint = fp,
+            KemCiphertextOrSalt = ctOrSalt,
+            Nonce = nonce,
+            WrappedDek = wrapped,
+            KdfId = kdfId,
+            KdfParameters = kdfParams,
+        };
+    }
+
+    private static byte[] ReadExactBytes(CborReader reader, int expectedLength, string fieldName)
+    {
+        byte[] value = reader.ReadByteString();
+        if (value.Length != expectedLength)
+            throw new PqSqliteException($"Manifest: {fieldName} must be exactly {expectedLength} bytes, got {value.Length}.");
+        return value;
+    }
+
+    private static byte[] ReadBoundedBytes(CborReader reader, int maxLength, string fieldName)
+    {
+        byte[] value = reader.ReadByteString();
+        if (value.Length is 0 || value.Length > maxLength)
+            throw new PqSqliteException($"Manifest: {fieldName} length {value.Length} outside accepted range 1..{maxLength}.");
+        return value;
+    }
+
+    private static string ReadBoundedText(CborReader reader, int maxLength, string fieldName)
+    {
+        string value = reader.ReadTextString();
+        if (value.Length is 0 || value.Length > maxLength)
+            throw new PqSqliteException($"Manifest: {fieldName} length outside accepted range 1..{maxLength}.");
+        return value;
+    }
+
+    // ── File I/O (atomic) ─────────────────────────────────────────────────
+
+    public static string SidecarPathFor(string databasePath) => databasePath + SidecarExtension;
+
+    /// <summary>Pending manifest written BEFORE a DEK rotation rekeys the database — the crash-recovery anchor.</summary>
+    public static string PendingSidecarPathFor(string databasePath) => databasePath + SidecarExtension + ".pending";
+
+    /// <summary>Atomic write: temp file in the same directory, flushed to disk, then renamed over the target.</summary>
+    public void Save(string databasePath) =>
+        AtomicWrite(SidecarPathFor(databasePath), Serialize());
+
+    public void SaveAsPending(string databasePath) =>
+        AtomicWrite(PendingSidecarPathFor(databasePath), Serialize());
+
+    internal static void AtomicWrite(string path, byte[] bytes)
+    {
+        string tmp = path + "." + Guid.NewGuid().ToString("N")[..8] + ".tmp";
+        try
+        {
+            using (var fs = new FileStream(tmp, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                fs.Write(bytes);
+                fs.Flush(flushToDisk: true);
+            }
+            File.Move(tmp, path, overwrite: true);
+        }
+        catch
+        {
+            try { File.Delete(tmp); } catch { /* best effort */ }
+            throw;
+        }
+    }
+
+    public static PqSqliteManifest Load(string databasePath) =>
+        LoadFromSidecar(SidecarPathFor(databasePath));
+
+    public static PqSqliteManifest LoadFromSidecar(string sidecarPath)
+    {
+        if (!File.Exists(sidecarPath))
+            throw new PqSqliteException($"Manifest sidecar not found: {sidecarPath}");
+        return Deserialize(File.ReadAllBytes(sidecarPath));
+    }
+}
+
+public sealed class PqSqliteException : Exception
+{
+    public PqSqliteException(string message) : base(message) { }
+    public PqSqliteException(string message, Exception inner) : base(message, inner) { }
+}
