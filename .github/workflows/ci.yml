@@ -53,10 +53,16 @@ jobs:
           curl -fsSL -o openssl.tar.gz "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
           tar xzf openssl.tar.gz
           cd "openssl-${OPENSSL_VERSION}"
-          ./Configure --prefix="${OPENSSL_PREFIX}" --openssldir="${OPENSSL_PREFIX}" shared no-tests no-docs
+          # -Wl,-rpath bakes the install lib path into the openssl binary so
+          # it self-resolves to its own libs instead of the system 3.0.x ones.
+          ./Configure \
+            --prefix="${OPENSSL_PREFIX}" \
+            --openssldir="${OPENSSL_PREFIX}" \
+            shared no-tests no-docs \
+            -Wl,-rpath,"${OPENSSL_PREFIX}/lib64"
           make -j"$(nproc)"
           sudo make install_sw
-          "${OPENSSL_PREFIX}/bin/openssl" version
+          LD_LIBRARY_PATH="${OPENSSL_PREFIX}/lib64" "${OPENSSL_PREFIX}/bin/openssl" version
 
       - name: Export LD_LIBRARY_PATH for .NET (Linux)
         if: runner.os == 'Linux'
