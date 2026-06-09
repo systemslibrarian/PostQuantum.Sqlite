@@ -1,0 +1,83 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly Monday 06:00 UTC catches new query packs even if main is quiet.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  OPENSSL_VERSION: "3.5.0"
+  OPENSSL_PREFIX: /opt/openssl-3.5
+
+jobs:
+  analyze:
+    name: CodeQL (csharp)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET SDK from global.json
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # CodeQL builds the project itself; the analyzer needs the same OpenSSL
+      # 3.5 dependency that the runtime test step needs.
+      - name: Cache OpenSSL 3.5
+        id: cache-openssl
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.OPENSSL_PREFIX }}
+          key: openssl-${{ env.OPENSSL_VERSION }}-${{ runner.os }}-${{ runner.arch }}-v1
+
+      - name: Build OpenSSL ${{ env.OPENSSL_VERSION }} from source (cache miss)
+        if: steps.cache-openssl.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends build-essential perl
+          cd /tmp
+          curl -fsSL -o openssl.tar.gz "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+          tar xzf openssl.tar.gz
+          cd "openssl-${OPENSSL_VERSION}"
+          ./Configure \
+            --prefix="${OPENSSL_PREFIX}" \
+            --openssldir="${OPENSSL_PREFIX}" \
+            shared no-tests no-docs \
+            -Wl,-rpath,"${OPENSSL_PREFIX}/lib64"
+          make -j"$(nproc)"
+          sudo make install_sw
+
+      - name: Export LD_LIBRARY_PATH for .NET
+        run: |
+          echo "LD_LIBRARY_PATH=${OPENSSL_PREFIX}/lib64:${OPENSSL_PREFIX}/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+          # security-and-quality is the broader query pack; on a security-
+          # sensitive library it's worth the extra noise.
+          queries: security-and-quality
+
+      - name: Build for CodeQL
+        run: dotnet build PostQuantum.Sqlite.sln -c Release
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:csharp"

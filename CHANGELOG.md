@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Dependabot config (`.github/dependabot.yml`) watching GitHub Actions
+  and the two NuGet csproj roots on a weekly cadence, with grouped
+  updates for analyzers and the xUnit runner.
+- CodeQL workflow (`.github/workflows/codeql.yml`) running the
+  `security-and-quality` query pack against C# on push, PR, and a
+  weekly cron.
+- CI now gates on `dotnet list package --vulnerable --include-transitive`,
+  so any known-CVE direct or transitive NuGet dependency fails the build
+  the next time CI runs.
 - Maintainer ops package: `CONTRIBUTING.md`, `.github/CODEOWNERS`,
   bug-report and feature-request issue templates with security-advisory
   link in `config.yml`, pull-request template, `docs/RELEASE-CHECKLIST.md`,

@@ -76,6 +76,21 @@ jobs:
       - name: Restore
         run: dotnet restore PostQuantum.Sqlite.sln
 
+      - name: Audit NuGet packages for known vulnerabilities
+        # Linux-only gate to avoid duplicate noise. Includes transitive deps,
+        # so a CVE deep in the closure (e.g. SQLitePCLRaw, Microsoft.Data.Sqlite)
+        # fails the build the next time CI runs after a GHSA publishes.
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(dotnet list PostQuantum.Sqlite.sln package --vulnerable --include-transitive 2>&1)
+          echo "$out"
+          if echo "$out" | grep -E "^\s+>\s+\S+\s+\S+\s+\S+\s+\S+\s+https?://" >/dev/null; then
+            echo "::error::Vulnerable NuGet packages reported above. Fail the build."
+            exit 1
+          fi
+
       - name: Build
         run: dotnet build PostQuantum.Sqlite.sln -c Release --no-restore -p:ContinuousIntegrationBuild=true
 

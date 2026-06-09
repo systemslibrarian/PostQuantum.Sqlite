@@ -1,0 +1,51 @@
+version: 2
+updates:
+  # GitHub Actions: keep workflow actions current. Pin to commit SHAs in PRs
+  # if the supply-chain story requires it; otherwise track minor + patch.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: [dependencies, github-actions]
+    commit-message:
+      prefix: "ci"
+      include: scope
+
+  # NuGet: the library itself.
+  - package-ecosystem: nuget
+    directory: "/src/PostQuantum.Sqlite"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: [dependencies, nuget]
+    commit-message:
+      prefix: "deps"
+      include: scope
+    # Group test-only-style changes to keep PR noise down. Cryptography or
+    # SQLite-related packages stay ungrouped so each one is reviewed alone.
+    groups:
+      analyzers:
+        patterns:
+          - "Microsoft.CodeAnalysis*"
+          - "Microsoft.SourceLink*"
+
+  # NuGet: tests.
+  - package-ecosystem: nuget
+    directory: "/tests/PostQuantum.Sqlite.Tests"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: [dependencies, nuget, tests]
+    commit-message:
+      prefix: "deps(tests)"
+      include: scope
+    groups:
+      test-runner:
+        patterns:
+          - "Microsoft.NET.Test.Sdk"
+          - "xunit"
+          - "xunit.*"
