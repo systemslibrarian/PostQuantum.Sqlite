@@ -11,6 +11,10 @@ permissions:
   contents: read
 
 env:
+  # Opt the runner into Node.js 24 ahead of the 2026-06-16 default flip
+  # so we are not surprised by a transparent runtime change.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
   # ML-KEM/ML-DSA in the .NET 10 BCL delegate to libssl; FIPS 203/204
   # support landed in OpenSSL 3.5. Ubuntu 24.04 ships 3.0.x, so we build
   # 3.5 from source and put it on LD_LIBRARY_PATH for the test step.

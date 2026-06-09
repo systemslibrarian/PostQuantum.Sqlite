@@ -1,0 +1,18 @@
+# Code owners — required reviewers for every PR touching matching paths.
+# Order matters: the LAST matching pattern wins.
+
+# Default owner for everything in the repo.
+*                                       @systemslibrarian
+
+# Spec, threat model, and security policy require explicit maintainer review.
+/docs/SPEC.md                           @systemslibrarian
+/docs/THREAT-MODEL.md                   @systemslibrarian
+/SECURITY.md                            @systemslibrarian
+
+# Manifest format, signing, and trust-pinning code paths.
+/src/PostQuantum.Sqlite/PqSqliteManifest.cs   @systemslibrarian
+/src/PostQuantum.Sqlite/PqSqliteVault.cs      @systemslibrarian
+/src/PostQuantum.Sqlite/Internal/             @systemslibrarian
+
+# CI, release, and supply-chain workflows.
+/.github/                               @systemslibrarian

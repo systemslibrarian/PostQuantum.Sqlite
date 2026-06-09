@@ -1,0 +1,48 @@
+name: Feature request / proposal
+description: A new capability, API, or manifest extension. Read scope first.
+title: "[proposal] "
+labels: [enhancement, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: this package owns the **key lifecycle around SQLCipher**.
+        Recipient sharing, ML-KEM wrapping, ML-DSA-signed manifests, revocation,
+        rotation, recovery. It is deliberately not a SQLCipher wrapper or a
+        general-purpose PQC abstraction. If the proposal is outside that scope,
+        open a Discussion instead.
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: What problem are you trying to solve, and why does it belong here rather than in calling code?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Concrete proposal
+      description: |
+        API shape, manifest field, or behavior change — concretely enough that a
+        reviewer can argue with the specifics, not just the intent.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What did you try or rule out, and why?
+
+  - type: textarea
+    id: compat
+    attributes:
+      label: Compatibility & threat-model impact
+      description: |
+        Does this change the manifest format, signed payload, trust model, or
+        any documented guarantee? If yes, sketch the migration story and the
+        new threat-model row this would require.
+    validations:
+      required: true

@@ -1,0 +1,75 @@
+name: Bug report
+description: Something behaves wrong, throws an unexpected exception, or violates a documented guarantee.
+title: "[bug] "
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ⚠️ **Do NOT file suspected vulnerabilities here.** Use the private
+        Security Advisories link on the new-issue page. See [SECURITY.md](../SECURITY.md).
+
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - Linux
+        - macOS
+        - Other (describe in repro)
+    validations:
+      required: true
+
+  - type: input
+    id: dotnet
+    attributes:
+      label: .NET SDK / runtime version
+      description: Output of `dotnet --version` and `dotnet --info` (relevant lines).
+      placeholder: "10.0.300"
+    validations:
+      required: true
+
+  - type: input
+    id: openssl
+    attributes:
+      label: OpenSSL version (Linux/macOS only)
+      description: Output of `openssl version`. Required because .NET 10 ML-KEM/ML-DSA depend on OpenSSL ≥ 3.5.
+      placeholder: "OpenSSL 3.5.0 8 Apr 2025"
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you observe, what did you expect?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: |
+        Smallest code or command sequence that reproduces the issue. If the bug
+        is in manifest parsing, attach the offending `.pqsm` bytes (hex or
+        base64) — those are the most valuable repros.
+      render: csharp
+    validations:
+      required: true
+
+  - type: textarea
+    id: threat-model
+    attributes:
+      label: Threat-model implications (if any)
+      description: |
+        Does this bug let an unauthorized party read, alter, or substitute the
+        manifest or DB? If not, say so. If yes, **STOP and report privately**
+        via Security Advisories instead of filing this issue.

@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Maintainer ops package: `CONTRIBUTING.md`, `.github/CODEOWNERS`,
+  bug-report and feature-request issue templates with security-advisory
+  link in `config.yml`, pull-request template, `docs/RELEASE-CHECKLIST.md`,
+  `docs/ROADMAP.md` (explicit 1.0 criteria), and ADRs 0001–0004 covering
+  the pinned trust anchor, sidecar manifest, revocation-always-rotates,
+  and strict-v1-no-extensions design decisions.
+- CI workflow exports `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` so the
+  upcoming 2026-06-16 Node.js 24 default flip doesn't change behavior
+  underneath us.
 - `global.json` pinning the .NET 10.0.300 SDK with `rollForward: latestFeature`.
 - `Directory.Build.props` with shared properties (TFM, Nullable,
   ImplicitUsings, `EnforceCodeStyleInBuild`, deterministic build).
