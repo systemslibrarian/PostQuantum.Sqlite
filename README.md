@@ -158,6 +158,19 @@ dotnet pack src/PostQuantum.Sqlite -c Release
 Requires the .NET 10 SDK (LTS; BCL ML-KEM / ML-DSA). Native SQLCipher is
 supplied by `SQLitePCLRaw.bundle_e_sqlcipher` — no system install needed.
 
+## Platform support
+
+| Platform | Status |
+|---|---|
+| Windows (CNG / SymCrypt) | ✅ Works on .NET 10.0.300+; CI covers `windows-latest`. |
+| Linux | ✅ Requires **OpenSSL ≥ 3.5** — FIPS 203 / 204 support landed there. Ubuntu 24.04 LTS ships 3.0.x, so you must install 3.5+ side-by-side and put it on `LD_LIBRARY_PATH`. CI builds 3.5 from source on `ubuntu-latest`; the workflow in `.github/workflows/ci.yml` is a copy-pasteable recipe. |
+| macOS | ⚠️ Same OpenSSL ≥ 3.5 requirement; install via `brew install openssl@3` and export `DYLD_LIBRARY_PATH` (or `DYLD_FALLBACK_LIBRARY_PATH`) to its `lib` directory. Not covered by CI today. |
+
+The dependency is upstream of this package: .NET 10's BCL `MLKem` / `MLDsa`
+classes throw `PlatformNotSupportedException` when the underlying provider
+can't find FIPS 203 / 204 — there is no way for a managed library to
+polyfill that.
+
 ## License
 
 MIT — see [SECURITY.md](SECURITY.md) for vulnerability reporting.
