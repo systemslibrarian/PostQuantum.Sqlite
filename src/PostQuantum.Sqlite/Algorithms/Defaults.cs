@@ -122,9 +122,13 @@ public sealed class Pbkdf2PasswordKdf : IPasswordKdf
                 throw new PqSqliteException($"PBKDF2 iteration count {iterations} outside accepted range.");
         }
 
-        byte[] passphraseBytes = System.Text.Encoding.UTF8.GetBytes(passphrase.ToArray());
+        // Encode chars directly to a zeroable byte buffer. passphrase.ToArray()
+        // would allocate a char[] copy that the GC can never zero.
+        int byteCount = System.Text.Encoding.UTF8.GetByteCount(passphrase);
+        byte[] passphraseBytes = new byte[byteCount];
         try
         {
+            System.Text.Encoding.UTF8.GetBytes(passphrase, passphraseBytes);
             return Rfc2898DeriveBytes.Pbkdf2(passphraseBytes, salt, iterations, HashAlgorithmName.SHA512, 32);
         }
         finally

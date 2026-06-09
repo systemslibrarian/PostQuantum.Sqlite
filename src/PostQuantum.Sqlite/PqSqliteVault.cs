@@ -9,7 +9,9 @@ namespace PostQuantum.Sqlite;
 /// <summary>A KEM recipient to whom the DEK should be wrapped.</summary>
 public sealed record KemRecipient(byte[] EncapsulationKey)
 {
-    public byte[] Fingerprint => PqSqliteManifest.FingerprintOf(EncapsulationKey);
+    private byte[]? _fingerprint;
+
+    public byte[] Fingerprint => _fingerprint ??= PqSqliteManifest.FingerprintOf(EncapsulationKey);
 }
 
 /// <summary>

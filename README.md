@@ -123,7 +123,7 @@ the honest summary:
 This package has **not** received an independent security audit, fuzzing
 campaign, or formal review. It implements NIST-final algorithms (FIPS
 203/204) via the .NET 10 BCL and follows the engineering practices in
-`docs/SPEC.md`, with 24 tests covering malicious-input and crash-recovery
+`docs/SPEC.md`, with 25 tests covering malicious-input and crash-recovery
 cases — but "carefully engineered" and "audited" are different claims, and
 you should know which one you're getting. Suitable for evaluation,
 prototypes, side projects, and applications whose threat model tolerates

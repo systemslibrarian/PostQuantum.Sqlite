@@ -1,6 +1,39 @@
-bin/
-obj/
-*.user
+# Build output
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+TestResults/
+*.binlog
+
+# NuGet
+*.nupkg
+*.snupkg
+project.lock.json
+.nuget/
+packages/
+
+# Visual Studio / Rider / VS Code
 .vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userprefs
+*.DotSettings.user
+.sln.docstates
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Runtime artifacts emitted by the QuickStart sample
 *.db
+*.db-journal
+*.db-wal
+*.db-shm
 *.pqsm
+*.pqsm.pending
+*.pqsm.*.tmp
