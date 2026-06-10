@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Four new fault-injection tests in `HardeningTests`:
+  `Corrupted_Pending_Is_Cleaned_Up_When_Primary_Succeeds`,
+  `Both_Primary_And_Pending_Corrupted_Fails_Cleanly` (asserts the
+  outer exception message AND that the inner parse cause survives),
+  `Pending_From_Different_Database_Is_Rejected_Via_Salt_Binding`
+  (cross-DB pending substitution must fail AND must not silently
+  delete a legitimately-different-DB pending file), and
+  `Leftover_Tmp_Files_Are_Inert` (stray `.tmp` files from prior
+  crashes don't interfere with subsequent operations and are not
+  cleaned up by us — they're not ours to GC).
+
+### Fixed
+- macOS CI: the .NET runtime is hardened-runtime-signed, so
+  `DYLD_LIBRARY_PATH` is stripped on process spawn. The workflow now
+  symlinks `libssl.3.dylib` and `libcrypto.3.dylib` into
+  `/usr/local/lib` (in the default dlopen search path) and keeps
+  `DYLD_FALLBACK_LIBRARY_PATH` as a safety net for paths that bypass
+  the symlinks. With this, `macos-latest` is green alongside Linux
+  and Windows.
+
+### Added
 - CI matrix now includes `macos-latest` alongside Ubuntu and Windows.
   Uses the same OpenSSL 3.5 source-build recipe (cached) adapted to
   macOS lib paths and `DYLD_LIBRARY_PATH`/`DYLD_FALLBACK_LIBRARY_PATH`.

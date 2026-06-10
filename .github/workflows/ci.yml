@@ -93,17 +93,20 @@ jobs:
         run: |
           echo "LD_LIBRARY_PATH=${OPENSSL_PREFIX}/lib64:${OPENSSL_PREFIX}/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
 
-      - name: Export library paths for .NET (macOS)
+      - name: Make OpenSSL discoverable by .NET (macOS)
         if: runner.os == 'macOS'
         run: |
-          # macOS dynamic loader respects DYLD_LIBRARY_PATH only when SIP allows
-          # — on GitHub runners it does for non-system processes like dotnet.
-          # DYLD_FALLBACK_LIBRARY_PATH is consulted after default paths and is
-          # safer; we set both so whichever the runtime checks wins.
-          {
-            echo "DYLD_LIBRARY_PATH=${OPENSSL_PREFIX}/lib:${DYLD_LIBRARY_PATH:-}"
-            echo "DYLD_FALLBACK_LIBRARY_PATH=${OPENSSL_PREFIX}/lib:${DYLD_FALLBACK_LIBRARY_PATH:-}"
-          } >> "$GITHUB_ENV"
+          # macOS hardened-runtime processes (the .NET runtime ships with it)
+          # have DYLD_LIBRARY_PATH stripped on process spawn, so exporting it
+          # via $GITHUB_ENV is not enough. Symlink the libs into /usr/local/lib
+          # which is in the default dlopen search path. Runs every build (cache
+          # hit included) so the symlinks survive cache restores too.
+          sudo mkdir -p /usr/local/lib
+          sudo ln -sf "${OPENSSL_PREFIX}/lib/libssl.3.dylib" /usr/local/lib/libssl.3.dylib
+          sudo ln -sf "${OPENSSL_PREFIX}/lib/libcrypto.3.dylib" /usr/local/lib/libcrypto.3.dylib
+          # DYLD_FALLBACK_LIBRARY_PATH is not stripped by hardened-runtime and
+          # is a safety net for dlopen calls that bypass the symlinks.
+          echo "DYLD_FALLBACK_LIBRARY_PATH=${OPENSSL_PREFIX}/lib:${DYLD_FALLBACK_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
 
       - name: Restore
         run: dotnet restore PostQuantum.Sqlite.sln

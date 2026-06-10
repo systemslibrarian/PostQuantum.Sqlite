@@ -286,6 +286,104 @@ public class HardeningTests : IDisposable
         vault.OpenWithPassphrase(DbPath, "hunter2hunter2", kdf: new RenamedKdf()).Dispose();
     }
 
+    // ── Fault injection: corrupt sidecars + leftover artefacts ────────────
+
+    [Fact]
+    public void Corrupted_Pending_Is_Cleaned_Up_When_Primary_Succeeds()
+    {
+        var (ek, dk) = Kem();
+        var (pk, sk) = Sig();
+        var vault = new PqSqliteVault(pk);
+
+        vault.Create(DbPath, new[] { new KemRecipient(ek) }, sk).Dispose();
+
+        // Simulate "rotation aborted mid-AtomicWrite": a malformed file sits
+        // at the .pending path. Open MUST succeed off the primary AND delete
+        // the corrupt pending so it can't bite a future call.
+        File.WriteAllBytes(PqSqliteManifest.PendingSidecarPathFor(DbPath),
+            new byte[] { 0xFF, 0xFF, 0xFF, 0xFF });
+
+        vault.Open(DbPath, dk, ek).Dispose();
+        Assert.False(File.Exists(PqSqliteManifest.PendingSidecarPathFor(DbPath)));
+    }
+
+    [Fact]
+    public void Both_Primary_And_Pending_Corrupted_Fails_Cleanly()
+    {
+        var (ek, dk) = Kem();
+        var (pk, sk) = Sig();
+        var vault = new PqSqliteVault(pk);
+
+        vault.Create(DbPath, new[] { new KemRecipient(ek) }, sk).Dispose();
+
+        // Both sidecars unparseable. Open MUST surface a PqSqliteException
+        // (no NRE, no IndexOutOfRange, no CborContentException leaking out).
+        File.WriteAllBytes(PqSqliteManifest.SidecarPathFor(DbPath), new byte[] { 0x00 });
+        File.WriteAllBytes(PqSqliteManifest.PendingSidecarPathFor(DbPath), new byte[] { 0x00 });
+
+        var ex = Assert.Throws<PqSqliteException>(() => vault.Open(DbPath, dk, ek));
+        Assert.Contains("Could not resolve", ex.Message, StringComparison.OrdinalIgnoreCase);
+        // The inner cause must surface the actual parse failure, not be lost.
+        Assert.IsType<PqSqliteException>(ex.InnerException);
+        Assert.Contains("malformed", ex.InnerException!.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Pending_From_Different_Database_Is_Rejected_Via_Salt_Binding()
+    {
+        var (ek, dk) = Kem();
+        var (pk, sk) = Sig();
+        var vault = new PqSqliteVault(pk);
+
+        string dbA = Path.Combine(_dir, "a.db");
+        string dbB = Path.Combine(_dir, "b.db");
+        vault.Create(dbA, new[] { new KemRecipient(ek) }, sk).Dispose();
+        vault.Create(dbB, new[] { new KemRecipient(ek) }, sk).Dispose();
+
+        // Attacker drops a valid manifest from a DIFFERENT database into b's
+        // .pending slot. Even if b's primary somehow failed, the cross-DB
+        // pending must be rejected via salt binding, not silently promoted.
+        File.Copy(PqSqliteManifest.SidecarPathFor(dbA),
+                  PqSqliteManifest.PendingSidecarPathFor(dbB), overwrite: true);
+
+        // Corrupt b's primary to force the recovery path to consider the pending.
+        byte[] primary = File.ReadAllBytes(PqSqliteManifest.SidecarPathFor(dbB));
+        primary[^20] ^= 0xFF;
+        File.WriteAllBytes(PqSqliteManifest.SidecarPathFor(dbB), primary);
+
+        Assert.Throws<PqSqliteException>(() => vault.Open(dbB, dk, ek));
+        // The pending sidecar should still be present — it was authentic for
+        // dbA, just not for dbB. We must not silently delete legitimate state
+        // belonging to another database that lives in the wrong directory.
+        Assert.True(File.Exists(PqSqliteManifest.PendingSidecarPathFor(dbB)));
+    }
+
+    [Fact]
+    public void Leftover_Tmp_Files_Are_Inert()
+    {
+        var (ek, dk) = Kem();
+        var (pk, sk) = Sig();
+        var vault = new PqSqliteVault(pk);
+
+        vault.Create(DbPath, new[] { new KemRecipient(ek) }, sk).Dispose();
+
+        // Simulate a previous crash mid-AtomicWrite leaving a stray .tmp.
+        // The next write picks a fresh GUID-suffixed tmp so collisions are
+        // impossible; verify Open and a mutating op both still work and the
+        // stray file is left untouched (it is not our responsibility to GC
+        // arbitrary files in the user's directory).
+        string strayTmp = PqSqliteManifest.SidecarPathFor(DbPath) + ".deadbeef.tmp";
+        File.WriteAllBytes(strayTmp, new byte[] { 0xDE, 0xAD, 0xBE, 0xEF });
+
+        vault.Open(DbPath, dk, ek).Dispose();
+
+        var (ek2, _) = Kem();
+        vault.AddRecipient(DbPath, new KemRecipient(ek2), dk, ek, sk);
+
+        Assert.True(File.Exists(strayTmp));
+        Assert.Equal(new byte[] { 0xDE, 0xAD, 0xBE, 0xEF }, File.ReadAllBytes(strayTmp));
+    }
+
     // ── Rollback detection ────────────────────────────────────────────────
 
     [Fact]
