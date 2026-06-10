@@ -59,6 +59,7 @@ mydata.db.pqsm   ← strict canonical-CBOR manifest (sidecar):
 Full format details: [`docs/SPEC.md`](docs/SPEC.md).
 Full security analysis: [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md).
 Conformance test vectors for independent implementations: [`docs/test-vectors.md`](docs/test-vectors.md).
+Fuzzing infrastructure: [`fuzz/README.md`](fuzz/README.md).
 
 ## Quick start
 

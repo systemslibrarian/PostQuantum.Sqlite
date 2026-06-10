@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `fuzz/PostQuantum.Sqlite.Fuzz/` — a SharpFuzz (2.2.0) AFL harness
+  pointed at `PqSqliteManifest.Deserialize` with a round-trip identity
+  check on accepted inputs. `PqSqliteException` is treated as a
+  rejection success; any other exception is a finding.
+- `fuzz/corpus/` seeded from the official test vectors so a fresh
+  campaign has both positive and adversarial starting points without
+  any setup.
+- `fuzz/README.md` with the one-time setup (SharpFuzz.CommandLine
+  tool install + instrumentation), the AFL launch command, and the
+  triage flow for moving a crash into the negative test-vector
+  corpus once a fix lands.
+- `.gitignore` now keeps `fuzz/findings/` and the instrumented bin
+  out of the repo while explicitly including `fuzz/corpus/**`
+  (the seed corpus is shipped intentionally).
+
+### Added
 - Official test-vector corpus under
   `tests/PostQuantum.Sqlite.Tests/Vectors/`:
   - One positive vector (`kem-single-recipient`) with the bytes of
