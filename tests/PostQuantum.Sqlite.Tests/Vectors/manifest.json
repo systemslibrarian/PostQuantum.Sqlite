@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "description": "Official PostQuantum.Sqlite test vectors. See docs/test-vectors.md.",
+  "positive": [
+    {
+      "name": "kem-single-recipient",
+      "path": "positive/kem-single-recipient/input.pqsm",
+      "description": "Minimal well-formed manifest: one ML-KEM-768 recipient, ML-DSA-65 signed, revision 1.",
+      "recipientEncapsulationKey": "positive/kem-single-recipient/recipient.encap.key",
+      "recipientDecapsulationKey": "positive/kem-single-recipient/recipient.decap.key",
+      "signerPublicKey": "positive/kem-single-recipient/signer.public.key",
+      "databaseSalt": "positive/kem-single-recipient/database.salt",
+      "expectedDek": "positive/kem-single-recipient/expected.dek"
+    }
+  ],
+  "negative": [
+    {
+      "name": "unknown-toplevel-field",
+      "path": "negative/unknown-toplevel-field.pqsm",
+      "description": "Adds top-level field 99 with a string value. Strict parser rejects unknown fields.",
+      "expectedErrorContains": "unknown field"
+    },
+    {
+      "name": "duplicate-recipient-field",
+      "path": "negative/duplicate-recipient-field.pqsm",
+      "description": "Recipient map has duplicate key 1 (type) \u2014 rejected by canonical CBOR uniqueness enforcement before the application\u0027s explicit duplicate-key check runs.",
+      "expectedErrorContains": "malformed"
+    },
+    {
+      "name": "truncated-nonce",
+      "path": "negative/truncated-nonce.pqsm",
+      "description": "Recipient nonce is 11 bytes instead of 12. Length is enforced exactly.",
+      "expectedErrorContains": "AES-GCM nonce"
+    },
+    {
+      "name": "wrong-salt-length",
+      "path": "negative/wrong-salt-length.pqsm",
+      "description": "Top-level database-salt is 15 bytes instead of 16.",
+      "expectedErrorContains": "database salt"
+    },
+    {
+      "name": "noncanonical-order",
+      "path": "negative/noncanonical-order.pqsm",
+      "description": "Top-level map keys are not sorted (canonical CBOR violated).",
+      "expectedErrorContains": "malformed"
+    },
+    {
+      "name": "trailing-bytes",
+      "path": "negative/trailing-bytes.pqsm",
+      "description": "Valid manifest with one extra 0x00 byte appended. Parser must reject trailing data.",
+      "expectedErrorContains": "trailing bytes"
+    }
+  ]
+}

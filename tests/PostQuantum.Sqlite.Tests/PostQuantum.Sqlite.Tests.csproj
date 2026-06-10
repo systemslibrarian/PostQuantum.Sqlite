@@ -10,4 +10,10 @@
   <ItemGroup>
     <ProjectReference Include="../../src/PostQuantum.Sqlite/PostQuantum.Sqlite.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Vectors\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>

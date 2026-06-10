@@ -8,6 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Official test-vector corpus under
+  `tests/PostQuantum.Sqlite.Tests/Vectors/`:
+  - One positive vector (`kem-single-recipient`) with the bytes of
+    `.pqsm`, recipient encap/decap keys, signer public key, database
+    salt, and the expected unwrapped DEK — enough for an independent
+    implementation to validate end-to-end (parse, signature verify,
+    fingerprint match, decapsulate, HKDF-KEK, AES-GCM unwrap).
+  - Six negative vectors covering the spec's mandatory parser
+    rejections: unknown top-level field, duplicate recipient key,
+    non-canonical ordering, trailing bytes, truncated nonce, wrong
+    salt length.
+  - `manifest.json` index keyed by name with `expectedErrorContains`
+    substrings for each negative case.
+- `tests/PostQuantum.Sqlite.Tests/VectorTests.cs` runs the corpus
+  every CI build, so any divergence between code and shipped vectors
+  fails CI immediately. A skipped `VectorGenerator` lives alongside
+  for maintainer regeneration.
+- `docs/test-vectors.md` documents the corpus layout, the eight-step
+  positive conformance procedure, and the rejection rules each
+  negative vector exercises — the spec piece that lets an outsider
+  build a compatible implementation.
+- README now links the test-vectors doc next to the spec and threat
+  model.
+
+### Added (continued)
 - `Microsoft.CodeAnalysis.PublicApiAnalyzers` with a snapshot of the
   current public surface in `PublicAPI.Shipped.txt` (119 entries).
   Any unintentional public-API change now fails the build (RS0016 /
