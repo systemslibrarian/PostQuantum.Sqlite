@@ -37,3 +37,6 @@ Thumbs.db
 *.pqsm
 *.pqsm.pending
 *.pqsm.*.tmp
+
+# But the conformance test vectors ARE checked in.
+!tests/PostQuantum.Sqlite.Tests/Vectors/**
