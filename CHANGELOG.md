@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- CI matrix now includes `macos-latest` alongside Ubuntu and Windows.
+  Uses the same OpenSSL 3.5 source-build recipe (cached) adapted to
+  macOS lib paths and `DYLD_LIBRARY_PATH`/`DYLD_FALLBACK_LIBRARY_PATH`.
+  README platform matrix promoted macOS from ⚠️ to ✅.
+
+### Added
 - `fuzz/PostQuantum.Sqlite.Fuzz/` — a SharpFuzz (2.2.0) AFL harness
   pointed at `PqSqliteManifest.Deserialize` with a round-trip identity
   check on accepted inputs. `PqSqliteException` is treated as a

@@ -170,7 +170,7 @@ for the verification recipe.
 |---|---|
 | Windows (CNG / SymCrypt) | ✅ Works on .NET 10.0.300+; CI covers `windows-latest`. |
 | Linux | ✅ Requires **OpenSSL ≥ 3.5** — FIPS 203 / 204 support landed there. Ubuntu 24.04 LTS ships 3.0.x, so you must install 3.5+ side-by-side and put it on `LD_LIBRARY_PATH`. CI builds 3.5 from source on `ubuntu-latest`; the workflow in `.github/workflows/ci.yml` is a copy-pasteable recipe. |
-| macOS | ⚠️ Same OpenSSL ≥ 3.5 requirement; install via `brew install openssl@3` and export `DYLD_LIBRARY_PATH` (or `DYLD_FALLBACK_LIBRARY_PATH`) to its `lib` directory. Not covered by CI today. |
+| macOS | ✅ Same OpenSSL ≥ 3.5 requirement; install via `brew install openssl@3` (when its bottle is ≥ 3.5) or build from source like Linux, then export `DYLD_LIBRARY_PATH` to its `lib` directory. CI covers `macos-latest` with the same source-build recipe as Linux. |
 
 The dependency is upstream of this package: .NET 10's BCL `MLKem` / `MLDsa`
 classes throw `PlatformNotSupportedException` when the underlying provider
