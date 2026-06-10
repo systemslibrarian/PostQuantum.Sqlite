@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `Microsoft.CodeAnalysis.PublicApiAnalyzers` with a snapshot of the
+  current public surface in `PublicAPI.Shipped.txt` (119 entries).
+  Any unintentional public-API change now fails the build (RS0016 /
+  RS0017); intentional changes land in `PublicAPI.Unshipped.txt` and
+  graduate at release time.
+- XML documentation comments on every public type, constant, field,
+  property, and method that was missing one (47 unique members), so
+  the suppression of CS1591 can be removed and the generated XML
+  docs are useful to NuGet consumers.
+
+### Changed
+- The library csproj no longer suppresses CS1591 ("missing XML
+  comment"). Every public surface is now documented or fails CI.
+
 - Tag-triggered release workflow (`.github/workflows/release.yml`)
   that verifies the tag matches `<Version>` in the csproj, runs the
   full vuln-audit + build + test + reproducible pack, computes

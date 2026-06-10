@@ -36,8 +36,10 @@ public interface ISignatureAlgorithm
     /// <summary>Exact signature length — used to validate the manifest before verification.</summary>
     int SignatureSizeInBytes { get; }
 
+    /// <summary>Produce a detached signature over <paramref name="data"/> with the given private key.</summary>
     byte[] Sign(ReadOnlySpan<byte> privateKey, ReadOnlySpan<byte> data);
 
+    /// <summary>Verify a detached <paramref name="signature"/> over <paramref name="data"/> under <paramref name="publicKey"/>. Returns <see langword="false"/> on any failure.</summary>
     bool Verify(ReadOnlySpan<byte> publicKey, ReadOnlySpan<byte> data, ReadOnlySpan<byte> signature);
 }
 

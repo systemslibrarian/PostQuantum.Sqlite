@@ -4,15 +4,19 @@ using PostQuantum.Sqlite.Abstractions;
 
 namespace PostQuantum.Sqlite;
 
+/// <summary>Wire-level recipient kind. The integer value is the on-disk encoding.</summary>
 public enum RecipientType : int
 {
+    /// <summary>Key-encapsulation recipient (e.g. ML-KEM-768). Wire value <c>1</c>.</summary>
     Kem = 1,
+    /// <summary>Passphrase recipient with a KDF-derived intermediate key. Wire value <c>2</c>.</summary>
     Passphrase = 2,
 }
 
 /// <summary>One wrapped copy of the DEK, addressed to a single recipient.</summary>
 public sealed class RecipientEntry
 {
+    /// <summary>KEM or passphrase. Determines which CBOR fields are required.</summary>
     public required RecipientType Type { get; init; }
 
     /// <summary>SHA-256 of the recipient's encapsulation key (KEM) or of the KDF salt (passphrase), first 16 bytes.</summary>
@@ -27,8 +31,10 @@ public sealed class RecipientEntry
     /// <summary>DEK wrapped under the per-recipient KEK: 32-byte ciphertext || 16-byte GCM tag.</summary>
     public required byte[] WrappedDek { get; init; }
 
-    /// <summary>KDF identifier + serialized parameters (passphrase recipients only).</summary>
+    /// <summary>KDF identifier (passphrase recipients only).</summary>
     public string? KdfId { get; init; }
+
+    /// <summary>Serialized KDF parameters as canonical CBOR; null for KEM recipients.</summary>
     public byte[]? KdfParameters { get; init; }
 }
 
@@ -44,14 +50,21 @@ public sealed class RecipientEntry
 /// </summary>
 public sealed class PqSqliteManifest
 {
+    /// <summary>The current manifest format version. Strict-equality check at parse time.</summary>
     public const int CurrentVersion = 1;
+    /// <summary>Sidecar file extension appended to the database path (<c>.pqsm</c>).</summary>
     public const string SidecarExtension = ".pqsm";
 
     // ── Fixed field lengths (version 1) ───────────────────────────────────
+    /// <summary>SQLCipher file-salt length in bytes (16).</summary>
     public const int SaltLength = 16;            // SQLCipher file salt
+    /// <summary>Truncated-SHA-256 fingerprint length in bytes (16).</summary>
     public const int FingerprintLength = 16;     // SHA-256 truncated
+    /// <summary>AES-GCM nonce length in bytes (12).</summary>
     public const int NonceLength = 12;           // AES-GCM
+    /// <summary>Wrapped-DEK length in bytes (48 = 32-byte ciphertext + 16-byte tag).</summary>
     public const int WrappedDekLength = 48;      // 32-byte DEK + 16-byte tag
+    /// <summary>KDF salt length for passphrase recipients (32 bytes).</summary>
     public const int PassphraseSaltLength = 32;  // KDF salt for passphrase recipients
 
     // ── Structural bounds (DoS hardening; exact sizes enforced later
@@ -80,15 +93,22 @@ public sealed class PqSqliteManifest
     private const int RKeyKdfId = 6;
     private const int RKeyKdfParams = 7;
 
+    /// <summary>Manifest format version. Always equal to <see cref="CurrentVersion"/> for a freshly-constructed manifest.</summary>
     public int Version { get; private set; } = CurrentVersion;
+
+    /// <summary>The KEM algorithm identifier (e.g. <c>"ML-KEM-768"</c>) recorded in the manifest.</summary>
     public required string KemAlgorithmId { get; init; }
+
+    /// <summary>The signature algorithm identifier (e.g. <c>"ML-DSA-65"</c>) recorded in the manifest.</summary>
     public required string SignatureAlgorithmId { get; init; }
 
     /// <summary>SQLCipher salt — first 16 bytes of the database file. Binds manifest to DB.</summary>
     public required byte[] DatabaseSalt { get; init; }
 
+    /// <summary>Wrapped-DEK entries, one per recipient. Order is significant for canonical CBOR re-encoding.</summary>
     public List<RecipientEntry> Recipients { get; } = new();
 
+    /// <summary>Public key of the signer that produced <see cref="Signature"/>; checked against the vault's trust anchor at verify time.</summary>
     public required byte[] SignerPublicKey { get; init; }
 
     /// <summary>
@@ -100,6 +120,7 @@ public sealed class PqSqliteManifest
     /// </summary>
     public long Revision { get; set; } = 1;
 
+    /// <summary>Detached signature over the canonical CBOR of fields 1–7. <see langword="null"/> until <see cref="Sign"/> runs.</summary>
     public byte[]? Signature { get; private set; }
 
     // ── Signing ────────────────────────────────────────────────────────────
@@ -112,6 +133,7 @@ public sealed class PqSqliteManifest
         return writer.Encode();
     }
 
+    /// <summary>Compute and store a signature over <see cref="GetSignedPayload"/> using the supplied signer and private key.</summary>
     public void Sign(ISignatureAlgorithm signer, ReadOnlySpan<byte> signingPrivateKey)
     {
         if (signer.AlgorithmId != SignatureAlgorithmId)
@@ -138,6 +160,7 @@ public sealed class PqSqliteManifest
 
     // ── Recipient lookup ──────────────────────────────────────────────────
 
+    /// <summary>Linear-scan lookup of a recipient entry by its 16-byte fingerprint. Returns <see langword="null"/> if no entry matches.</summary>
     public RecipientEntry? FindByFingerprint(ReadOnlySpan<byte> fingerprint)
     {
         foreach (var r in Recipients)
@@ -145,11 +168,13 @@ public sealed class PqSqliteManifest
         return null;
     }
 
+    /// <summary>SHA-256 of <paramref name="keyMaterial"/> truncated to <see cref="FingerprintLength"/> bytes — the manifest's fingerprint construction.</summary>
     public static byte[] FingerprintOf(ReadOnlySpan<byte> keyMaterial) =>
         SHA256.HashData(keyMaterial)[..FingerprintLength];
 
     // ── CBOR serialization ────────────────────────────────────────────────
 
+    /// <summary>Serialize the manifest (including signature if present) to canonical CBOR.</summary>
     public byte[] Serialize()
     {
         var writer = new CborWriter(CborConformanceMode.Canonical);
@@ -405,6 +430,7 @@ public sealed class PqSqliteManifest
 
     // ── File I/O (atomic) ─────────────────────────────────────────────────
 
+    /// <summary>Return the primary sidecar path for <paramref name="databasePath"/> (<c>&lt;db&gt;.pqsm</c>).</summary>
     public static string SidecarPathFor(string databasePath) => databasePath + SidecarExtension;
 
     /// <summary>Pending manifest written BEFORE a DEK rotation rekeys the database — the crash-recovery anchor.</summary>
@@ -414,6 +440,7 @@ public sealed class PqSqliteManifest
     public void Save(string databasePath) =>
         AtomicWrite(SidecarPathFor(databasePath), Serialize());
 
+    /// <summary>Atomic write of the manifest to the <c>.pending</c> sidecar — the first phase of crash-safe rotation.</summary>
     public void SaveAsPending(string databasePath) =>
         AtomicWrite(PendingSidecarPathFor(databasePath), Serialize());
 
@@ -436,9 +463,11 @@ public sealed class PqSqliteManifest
         }
     }
 
+    /// <summary>Load the primary sidecar for <paramref name="databasePath"/> and strict-parse it. Does NOT verify the signature; use a vault for that.</summary>
     public static PqSqliteManifest Load(string databasePath) =>
         LoadFromSidecar(SidecarPathFor(databasePath));
 
+    /// <summary>Load and strict-parse a manifest from an arbitrary sidecar path. Does NOT verify the signature.</summary>
     public static PqSqliteManifest LoadFromSidecar(string sidecarPath)
     {
         if (!File.Exists(sidecarPath))
@@ -447,8 +476,12 @@ public sealed class PqSqliteManifest
     }
 }
 
+/// <summary>The exception type all PostQuantum.Sqlite operations surface for trust-pin, parse, crypto, and I/O failures.</summary>
 public sealed class PqSqliteException : Exception
 {
+    /// <summary>Construct an exception with a human-readable message.</summary>
     public PqSqliteException(string message) : base(message) { }
+
+    /// <summary>Construct an exception wrapping an inner cause.</summary>
     public PqSqliteException(string message, Exception inner) : base(message, inner) { }
 }

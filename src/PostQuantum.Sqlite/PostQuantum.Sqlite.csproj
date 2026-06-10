@@ -3,7 +3,6 @@
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
 
     <!-- Package metadata -->
     <PackageId>PostQuantum.Sqlite</PackageId>
@@ -36,6 +35,12 @@
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" Version="2.1.10" />
     <PackageReference Include="System.Formats.Cbor" Version="9.0.0" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.11.0-beta1.26057.1" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="PublicAPI.Shipped.txt" />
+    <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
   </ItemGroup>
 
 </Project>

@@ -12,11 +12,15 @@ namespace PostQuantum.Sqlite.Algorithms;
 /// </summary>
 public sealed class MlKem768Kem : IKemAlgorithm
 {
+    /// <inheritdoc />
     public string AlgorithmId => "ML-KEM-768";
 
+    /// <inheritdoc />
     public int CiphertextSizeInBytes => MLKemAlgorithm.MLKem768.CiphertextSizeInBytes;          // 1088
+    /// <inheritdoc />
     public int EncapsulationKeySizeInBytes => MLKemAlgorithm.MLKem768.EncapsulationKeySizeInBytes; // 1184
 
+    /// <inheritdoc />
     public (byte[] Ciphertext, byte[] SharedSecret) Encapsulate(ReadOnlySpan<byte> encapsulationKey)
     {
         using MLKem kem = MLKem.ImportEncapsulationKey(MLKemAlgorithm.MLKem768, encapsulationKey);
@@ -26,6 +30,7 @@ public sealed class MlKem768Kem : IKemAlgorithm
         return (ciphertext, sharedSecret);
     }
 
+    /// <inheritdoc />
     public byte[] Decapsulate(ReadOnlySpan<byte> decapsulationKey, ReadOnlySpan<byte> ciphertext)
     {
         using MLKem kem = MLKem.ImportDecapsulationKey(MLKemAlgorithm.MLKem768, decapsulationKey);
@@ -45,11 +50,15 @@ public sealed class MlKem768Kem : IKemAlgorithm
 /// <summary>ML-DSA-65 (FIPS 204) over the .NET 10 BCL.</summary>
 public sealed class MlDsa65Signer : ISignatureAlgorithm
 {
+    /// <inheritdoc />
     public string AlgorithmId => "ML-DSA-65";
 
+    /// <inheritdoc />
     public int PublicKeySizeInBytes => MLDsaAlgorithm.MLDsa65.PublicKeySizeInBytes;  // 1952
+    /// <inheritdoc />
     public int SignatureSizeInBytes => MLDsaAlgorithm.MLDsa65.SignatureSizeInBytes;  // 3309
 
+    /// <inheritdoc />
     public byte[] Sign(ReadOnlySpan<byte> privateKey, ReadOnlySpan<byte> data)
     {
         using MLDsa dsa = MLDsa.ImportMLDsaPrivateKey(MLDsaAlgorithm.MLDsa65, privateKey);
@@ -58,6 +67,7 @@ public sealed class MlDsa65Signer : ISignatureAlgorithm
         return signature;
     }
 
+    /// <inheritdoc />
     public bool Verify(ReadOnlySpan<byte> publicKey, ReadOnlySpan<byte> data, ReadOnlySpan<byte> signature)
     {
         using MLDsa dsa = MLDsa.ImportMLDsaPublicKey(MLDsaAlgorithm.MLDsa65, publicKey);
@@ -79,12 +89,14 @@ public sealed class MlDsa65Signer : ISignatureAlgorithm
 /// </summary>
 public sealed class Pbkdf2PasswordKdf : IPasswordKdf
 {
+    /// <summary>Default PBKDF2-SHA512 iteration count (OWASP-style guidance, 2025).</summary>
     public const int DefaultIterations = 600_000;
     private const int MinIterations = 1_000;
     private const int MaxIterations = 100_000_000;
 
     private readonly int _iterations;
 
+    /// <summary>Construct a PBKDF2-SHA512 KDF with a custom iteration count (1_000–100_000_000).</summary>
     public Pbkdf2PasswordKdf(int iterations = DefaultIterations)
     {
         if (iterations is < MinIterations or > MaxIterations)
@@ -92,8 +104,10 @@ public sealed class Pbkdf2PasswordKdf : IPasswordKdf
         _iterations = iterations;
     }
 
+    /// <inheritdoc />
     public string KdfId => "PBKDF2-SHA512";
 
+    /// <inheritdoc />
     public byte[] SerializeParameters()
     {
         var writer = new CborWriter(CborConformanceMode.Canonical);
@@ -104,6 +118,7 @@ public sealed class Pbkdf2PasswordKdf : IPasswordKdf
         return writer.Encode();
     }
 
+    /// <inheritdoc />
     public byte[] DeriveKey(ReadOnlySpan<char> passphrase, ReadOnlySpan<byte> salt, ReadOnlySpan<byte> serializedParameters)
     {
         int iterations = _iterations;

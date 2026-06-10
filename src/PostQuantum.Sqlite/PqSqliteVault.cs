@@ -11,6 +11,7 @@ public sealed record KemRecipient(byte[] EncapsulationKey)
 {
     private byte[]? _fingerprint;
 
+    /// <summary>SHA-256 of the encapsulation key truncated to 16 bytes; cached on first access.</summary>
     public byte[] Fingerprint => _fingerprint ??= PqSqliteManifest.FingerprintOf(EncapsulationKey);
 }
 
