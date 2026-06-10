@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `docs/OPERATIONS.md` — deployment and incident-response guide:
+  pre-flight checklist, signer key custody, out-of-band revision
+  tracking, backup/restore as a `(db, sidecar)` unit (including the
+  `.pending` crash-recovery anchor), recipient lifecycle for device
+  onboarding/retirement and passphrase break-glass, incident response
+  for compromised recipient keys / compromised signer / suspected
+  manifest tampering / suspected page-level tampering, metrics worth
+  tracking, and a "things that look like features but are footguns"
+  section.
+- README "When NOT to use this" section lists the cases where the
+  manifest layer is overkill or actively the wrong tool (no sharing,
+  HTTP-layer authz already in place, threat model that genuinely
+  tolerates RSA/ECDH, key-management-service needs, macOS-only,
+  cannot tolerate the OPERATIONS deployment requirements).
+- README "Operations" pointer block above the "Maturity" section so
+  the deployment guide is discoverable from the front page.
+
+### Added
 - `bench/PostQuantum.Sqlite.Bench/` BenchmarkDotNet suite covering the
   headline vault operations (Create, Open, AddRecipient, RotateDek,
   RemoveRecipientAndRotate) at three database sizes (0, 1k, 10k rows)

@@ -121,6 +121,48 @@ the honest summary:
 - **Passphrases** are the weakest path; prefer an Argon2id `IPasswordKdf`
   over the PBKDF2 default, and treat them as break-glass recovery.
 
+## When NOT to use this
+
+Not every application benefits from a post-quantum signed key
+manifest. Skip this package if any of these apply:
+
+- **You don't share the database.** A single-process desktop app
+  whose one user holds the only key is not the use case this
+  package was built for. Plain SQLCipher with the user's passphrase
+  is enough; the manifest adds operational complexity for no
+  authority gain.
+- **Access control already lives somewhere else.** If your app is a
+  web server fronting a SQLite database and authorisation runs at
+  the HTTP layer, the manifest's recipient-set is a parallel
+  authority model you have to keep in sync with the primary one.
+  Two sources of truth for who can read what is a foot-gun.
+- **Your threat model genuinely tolerates RSA/ECDH key wrapping.**
+  Harvest-now-decrypt-later only matters if (a) an attacker can
+  capture wrapped keys today and (b) the wrapped keys protect data
+  that's still sensitive when a capable quantum computer arrives.
+  Short-lived session caches don't qualify.
+- **You need a key-management service**, not a key-lifecycle library.
+  See [`PostQuantum.KeyManagement`](https://github.com/systemslibrarian/PostQuantum.KeyManagement);
+  this package is a deliberately narrow piece of that picture.
+- **You're targeting macOS only.** .NET 10 on Darwin does not yet
+  implement ML-KEM (see the [platform support](#platform-support)
+  matrix). The library will refuse to construct a vault at runtime.
+  Wait for upstream support before designing it in.
+- **You can't tolerate the deployment requirements** in
+  [`docs/OPERATIONS.md`](docs/OPERATIONS.md) — particularly
+  out-of-band revision tracking and pinned-signer trust custody.
+  Those requirements are load-bearing; the package is not
+  meaningfully useful without them.
+
+If you read the list and none of it applies, this is the right tool.
+
+## Operations
+
+[`docs/OPERATIONS.md`](docs/OPERATIONS.md) is the deployment guide:
+signer custody, out-of-band revision tracking, backup/restore as a
+single unit, recipient lifecycle, and incident response for
+compromised keys and tampered manifests. Read it before you ship.
+
 ## Maturity
 
 This package has **not** received an independent security audit, fuzzing
