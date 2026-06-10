@@ -158,6 +158,10 @@ dotnet pack src/PostQuantum.Sqlite -c Release
 Requires the .NET 10 SDK (LTS; BCL ML-KEM / ML-DSA). Native SQLCipher is
 supplied by `SQLitePCLRaw.bundle_e_sqlcipher` — no system install needed.
 
+Releases are reproducible from source and ship a signed build-provenance
+attestation. See [`docs/REPRODUCIBLE-BUILDS.md`](docs/REPRODUCIBLE-BUILDS.md)
+for the verification recipe.
+
 ## Platform support
 
 | Platform | Status |

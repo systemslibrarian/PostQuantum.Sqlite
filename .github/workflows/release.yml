@@ -1,0 +1,187 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v0.1.0). Required for manual runs."
+        required: true
+        type: string
+
+permissions:
+  contents: write       # create GitHub Release + upload assets
+  id-token: write       # OIDC for the provenance attestation
+  attestations: write   # store the attestation
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  OPENSSL_VERSION: "3.5.0"
+  OPENSSL_PREFIX: /opt/openssl-3.5
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  release:
+    name: Build, attest, and release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout (tag)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+          fetch-depth: 0
+
+      - name: Verify tag matches csproj <Version>
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${TAG#v}"
+          csproj_version=$(grep -oE "<Version>[^<]+</Version>" src/PostQuantum.Sqlite/PostQuantum.Sqlite.csproj | sed -E 's/<\/?Version>//g')
+          if [ "$tag" != "$csproj_version" ]; then
+            echo "::error::Tag $TAG (parsed $tag) does not match csproj <Version>$csproj_version</Version>."
+            exit 1
+          fi
+          echo "Releasing PostQuantum.Sqlite $csproj_version from $TAG."
+
+      - name: Set up .NET SDK from global.json
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Cache OpenSSL 3.5
+        id: cache-openssl
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.OPENSSL_PREFIX }}
+          key: openssl-${{ env.OPENSSL_VERSION }}-${{ runner.os }}-${{ runner.arch }}-v1
+
+      - name: Build OpenSSL ${{ env.OPENSSL_VERSION }} from source (cache miss)
+        if: steps.cache-openssl.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends build-essential perl
+          cd /tmp
+          curl -fsSL -o openssl.tar.gz "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+          tar xzf openssl.tar.gz
+          cd "openssl-${OPENSSL_VERSION}"
+          ./Configure --prefix="${OPENSSL_PREFIX}" --openssldir="${OPENSSL_PREFIX}" shared no-tests no-docs -Wl,-rpath,"${OPENSSL_PREFIX}/lib64"
+          make -j"$(nproc)"
+          sudo make install_sw
+
+      - name: Export LD_LIBRARY_PATH for .NET
+        run: echo "LD_LIBRARY_PATH=${OPENSSL_PREFIX}/lib64:${OPENSSL_PREFIX}/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+
+      - name: Restore
+        run: dotnet restore PostQuantum.Sqlite.sln
+
+      - name: Audit NuGet packages for known vulnerabilities
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(dotnet list PostQuantum.Sqlite.sln package --vulnerable --include-transitive 2>&1)
+          echo "$out"
+          if echo "$out" | grep -E "^\s+>\s+\S+\s+\S+\s+\S+\s+\S+\s+https?://" >/dev/null; then
+            echo "::error::Vulnerable NuGet packages reported above. Refusing to release."
+            exit 1
+          fi
+
+      - name: Build (reproducible)
+        run: dotnet build PostQuantum.Sqlite.sln -c Release --no-restore -p:ContinuousIntegrationBuild=true
+
+      - name: Test
+        run: dotnet test PostQuantum.Sqlite.sln -c Release --no-build
+
+      - name: Pack
+        run: |
+          mkdir -p artifacts
+          dotnet pack src/PostQuantum.Sqlite/PostQuantum.Sqlite.csproj \
+            -c Release --no-build -p:ContinuousIntegrationBuild=true \
+            --output artifacts
+
+      - name: Compute SHA-256 hashes
+        id: hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd artifacts
+          sha256sum *.nupkg *.snupkg | tee SHA256SUMS.txt
+          {
+            echo "nupkg_sha256<<EOF"
+            sha256sum *.nupkg
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Attest build provenance for release artifacts
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
+
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${TAG#v}"
+          # Pull the section between the matching [x.y.z] header and the next ## header.
+          notes=$(awk -v ver="$tag" '
+            $0 ~ "^## \\[" ver "\\]" { capture=1; next }
+            capture && /^## / { exit }
+            capture { print }
+          ' CHANGELOG.md)
+          if [ -z "$notes" ]; then
+            notes="See CHANGELOG.md for details."
+          fi
+          {
+            echo "body<<EOF"
+            echo "$notes"
+            echo ""
+            echo "### Verification"
+            echo ""
+            echo "Build provenance attested via [actions/attest-build-provenance](https://github.com/actions/attest-build-provenance). Verify with:"
+            echo ""
+            echo '```'
+            echo "gh attestation verify artifacts/PostQuantum.Sqlite.${tag}.nupkg --owner systemslibrarian"
+            echo '```'
+            echo ""
+            echo "### SHA-256"
+            echo ""
+            echo '```'
+            cat artifacts/SHA256SUMS.txt
+            echo '```'
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: PostQuantum.Sqlite ${{ env.TAG }}
+          body: ${{ steps.notes.outputs.body }}
+          draft: false
+          prerelease: ${{ contains(env.TAG, '-') }}
+          files: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
+            artifacts/SHA256SUMS.txt
+
+      - name: Upload release artifacts as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ env.TAG }}
+          path: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
+            artifacts/SHA256SUMS.txt
+
+      # NuGet publish is intentionally NOT here. The release workflow proves
+      # the artifact + provenance + checksum from a tagged source state; the
+      # maintainer pushes to nuget.org out-of-band after a sanity check.
+      # See docs/RELEASE-CHECKLIST.md.

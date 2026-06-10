@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Tag-triggered release workflow (`.github/workflows/release.yml`)
+  that verifies the tag matches `<Version>` in the csproj, runs the
+  full vuln-audit + build + test + reproducible pack, computes
+  SHA-256 over the artifacts, attests build provenance via
+  `actions/attest-build-provenance`, extracts release notes from the
+  matching `CHANGELOG.md` section, and publishes a GitHub Release
+  with the `.nupkg`, `.snupkg`, and `SHA256SUMS.txt` attached.
+  NuGet publish is intentionally out-of-band (see RELEASE-CHECKLIST).
+- `docs/REPRODUCIBLE-BUILDS.md` documenting how a third party rebuilds
+  a tagged release from source and verifies both the SHA-256 and the
+  build-provenance attestation. README links it from the Building
+  section.
 - Dependabot config (`.github/dependabot.yml`) watching GitHub Actions
   and the two NuGet csproj roots on a weekly cadence, with grouped
   updates for analyzers and the xUnit runner.
