@@ -28,20 +28,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   crashes don't interfere with subsequent operations and are not
   cleaned up by us — they're not ours to GC).
 
-### Fixed
-- macOS CI: the .NET runtime is hardened-runtime-signed, so
-  `DYLD_LIBRARY_PATH` is stripped on process spawn. The workflow now
-  symlinks `libssl.3.dylib` and `libcrypto.3.dylib` into
-  `/usr/local/lib` (in the default dlopen search path) and keeps
-  `DYLD_FALLBACK_LIBRARY_PATH` as a safety net for paths that bypass
-  the symlinks. With this, `macos-latest` is green alongside Linux
-  and Windows.
-
-### Added
-- CI matrix now includes `macos-latest` alongside Ubuntu and Windows.
-  Uses the same OpenSSL 3.5 source-build recipe (cached) adapted to
-  macOS lib paths and `DYLD_LIBRARY_PATH`/`DYLD_FALLBACK_LIBRARY_PATH`.
-  README platform matrix promoted macOS from ⚠️ to ✅.
+### Changed
+- README platform matrix demotes macOS from ⚠️ to ❌ ("not currently
+  runnable") and the CI matrix drops `macos-latest`. .NET 10's macOS
+  build delegates `System.Security.Cryptography` to Apple's Security
+  framework, not OpenSSL, and Security framework does not yet
+  implement ML-KEM / ML-DSA — so `MLKem.IsSupported` returns `false`
+  on Darwin regardless of which OpenSSL is installed. Installing
+  OpenSSL 3.5, symlinking the dylibs into `/usr/local/lib`, and
+  exporting `DYLD_FALLBACK_LIBRARY_PATH` (all of which the previous
+  attempt did correctly) had no effect because the runtime never
+  calls into OpenSSL on this platform. macOS will return when either
+  Apple ships FIPS 203/204 in Security framework or .NET adds an
+  explicit OpenSSL fallback on Darwin.
 
 ### Added
 - `fuzz/PostQuantum.Sqlite.Fuzz/` — a SharpFuzz (2.2.0) AFL harness
