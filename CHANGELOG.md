@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `bench/PostQuantum.Sqlite.Bench/` BenchmarkDotNet suite covering the
+  headline vault operations (Create, Open, AddRecipient, RotateDek,
+  RemoveRecipientAndRotate) at three database sizes (0, 1k, 10k rows)
+  so the linear cost of `sqlite3_rekey` is visible alongside the
+  constant-time crypto cost. `bench/README.md` documents how to run a
+  subset, the methodology, and when to re-run. The project is
+  intentionally out of `PostQuantum.Sqlite.sln`; build-on-demand.
+
+### Added
 - Four new fault-injection tests in `HardeningTests`:
   `Corrupted_Pending_Is_Cleaned_Up_When_Primary_Succeeds`,
   `Both_Primary_And_Pending_Corrupted_Fails_Cleanly` (asserts the

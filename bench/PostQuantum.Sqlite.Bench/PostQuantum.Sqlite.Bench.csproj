@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- BenchmarkDotNet generates code that doesn't satisfy our usual
+         strict warning posture. -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Nullable>disable</Nullable>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/PostQuantum.Sqlite/PostQuantum.Sqlite.csproj" />
+    <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
+  </ItemGroup>
+
+</Project>

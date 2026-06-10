@@ -45,3 +45,6 @@ Thumbs.db
 # Fuzz outputs are not.
 fuzz/findings/
 fuzz/PostQuantum.Sqlite.Fuzz/bin-instrumented/
+
+# BenchmarkDotNet artefacts (per-run results, not source).
+bench/PostQuantum.Sqlite.Bench/BenchmarkDotNet.Artifacts/
