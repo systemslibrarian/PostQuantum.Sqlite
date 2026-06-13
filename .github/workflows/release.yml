@@ -49,7 +49,7 @@ jobs:
           echo "Releasing PostQuantum.SqlCipher.Vault $csproj_version from $TAG."
 
       - name: Set up .NET SDK from global.json
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
 
