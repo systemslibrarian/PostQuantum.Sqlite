@@ -1,9 +1,9 @@
 using BenchmarkDotNet.Attributes;
 using Microsoft.Data.Sqlite;
-using PostQuantum.Sqlite;
-using PostQuantum.Sqlite.Algorithms;
+using PostQuantum.SqlCipher.Vault;
+using PostQuantum.SqlCipher.Vault.Algorithms;
 
-namespace PostQuantum.Sqlite.Bench;
+namespace PostQuantum.SqlCipher.Vault.Bench;
 
 [MemoryDiagnoser]
 [ShortRunJob]
@@ -13,7 +13,7 @@ public class VaultBenchmarks
     private byte[] _aliceDk;
     private byte[] _signPk;
     private byte[] _signSk;
-    private PqSqliteVault _vault;
+    private PqSqlCipherVault _vault;
     private string _workDir;
     private string _dbPath;
 
@@ -31,7 +31,7 @@ public class VaultBenchmarks
         // iterations once captured here.
         (_aliceEk, _aliceDk) = MlKem768Kem.GenerateKeyPair();
         (_signPk,  _signSk)  = MlDsa65Signer.GenerateKeyPair();
-        _vault = new PqSqliteVault(_signPk);
+        _vault = new PqSqlCipherVault(_signPk);
         _workDir = Directory.CreateTempSubdirectory("pqsqlite-bench").FullName;
     }
 
@@ -51,7 +51,7 @@ public class VaultBenchmarks
     public void IterationCleanup_Create()
     {
         TryDelete(_dbPath);
-        TryDelete(PqSqliteManifest.SidecarPathFor(_dbPath));
+        TryDelete(PqSqlCipherManifest.SidecarPathFor(_dbPath));
     }
 
     [Benchmark(Description = "Create empty DB + signed manifest")]
@@ -84,8 +84,8 @@ public class VaultBenchmarks
     public void IterationCleanup_Existing()
     {
         TryDelete(_dbPath);
-        TryDelete(PqSqliteManifest.SidecarPathFor(_dbPath));
-        TryDelete(PqSqliteManifest.PendingSidecarPathFor(_dbPath));
+        TryDelete(PqSqlCipherManifest.SidecarPathFor(_dbPath));
+        TryDelete(PqSqlCipherManifest.PendingSidecarPathFor(_dbPath));
     }
 
     [Benchmark(Description = "Open existing DB by recipient key")]

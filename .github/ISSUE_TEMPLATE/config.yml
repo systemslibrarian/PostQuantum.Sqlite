@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/systemslibrarian/PostQuantum.Sqlite/security/advisories/new
+    url: https://github.com/systemslibrarian/PostQuantum.SqlCipher.Vault/security/advisories/new
     about: |
       Suspected vulnerabilities are reported PRIVATELY via GitHub Security Advisories,
       never as public issues. See SECURITY.md for what to include.
   - name: Question or design discussion
-    url: https://github.com/systemslibrarian/PostQuantum.Sqlite/discussions
+    url: https://github.com/systemslibrarian/PostQuantum.SqlCipher.Vault/discussions
     about: For open-ended questions, scope discussions, or "is this in scope?" pre-PR
       conversations, use Discussions instead of opening an issue.

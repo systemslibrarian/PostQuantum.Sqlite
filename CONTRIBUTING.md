@@ -37,9 +37,9 @@ If you are unsure whether something is in scope, open an issue and ask.
 ## Local development
 
 ```bash
-dotnet restore PostQuantum.Sqlite.sln
-dotnet build PostQuantum.Sqlite.sln -c Release
-dotnet test PostQuantum.Sqlite.sln -c Release
+dotnet restore PostQuantum.SqlCipher.Vault.sln
+dotnet build PostQuantum.SqlCipher.Vault.sln -c Release
+dotnet test PostQuantum.SqlCipher.Vault.sln -c Release
 dotnet run --project samples/QuickStart -c Release
 ```
 

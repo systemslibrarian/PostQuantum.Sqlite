@@ -10,7 +10,7 @@ handles the mechanical steps; this checklist captures the human ones.
 - [ ] No open security advisories awaiting fix-in-this-release.
 - [ ] `CHANGELOG.md` `[Unreleased]` section reflects every user-visible
       change since the last tag and is dated today.
-- [ ] `Version` in `src/PostQuantum.Sqlite/PostQuantum.Sqlite.csproj`
+- [ ] `Version` in `src/PostQuantum.SqlCipher.Vault/PostQuantum.SqlCipher.Vault.csproj`
       matches the tag to be pushed.
 - [ ] `PublicAPI.Unshipped.txt` is empty (everything moved to `Shipped.txt`).
 - [ ] `docs/SPEC.md` version line matches the manifest version this

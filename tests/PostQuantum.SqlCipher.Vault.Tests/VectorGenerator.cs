@@ -1,11 +1,11 @@
 using System.Formats.Cbor;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
-using PostQuantum.Sqlite;
-using PostQuantum.Sqlite.Algorithms;
+using PostQuantum.SqlCipher.Vault;
+using PostQuantum.SqlCipher.Vault.Algorithms;
 using Xunit;
 
-namespace PostQuantum.Sqlite.Tests;
+namespace PostQuantum.SqlCipher.Vault.Tests;
 
 /// <summary>
 /// Regenerates the test-vector corpus under <c>Vectors/</c>. Intentionally
@@ -29,7 +29,7 @@ public sealed class VectorGenerator
         var manifest = new
         {
             version = 1,
-            description = "Official PostQuantum.Sqlite test vectors. See docs/test-vectors.md.",
+            description = "Official PostQuantum.SqlCipher.Vault test vectors. See docs/test-vectors.md.",
             positive,
             negative,
         };
@@ -45,7 +45,7 @@ public sealed class VectorGenerator
 
         var (ek, dk) = MlKem768Kem.GenerateKeyPair();
         var (signPk, signSk) = MlDsa65Signer.GenerateKeyPair();
-        var vault = new PqSqliteVault(signPk);
+        var vault = new PqSqlCipherVault(signPk);
         try
         {
             using (SqliteConnection _ = vault.Create(tempDb, new[] { new KemRecipient(ek) }, signSk))
@@ -53,7 +53,7 @@ public sealed class VectorGenerator
                 // intentionally empty: vector exercises the manifest, not the DB schema.
             }
 
-            File.Copy(PqSqliteManifest.SidecarPathFor(tempDb), Path.Combine(dir, "input.pqsm"), overwrite: true);
+            File.Copy(PqSqlCipherManifest.SidecarPathFor(tempDb), Path.Combine(dir, "input.pqsm"), overwrite: true);
             File.WriteAllBytes(Path.Combine(dir, "recipient.encap.key"), ek);
             File.WriteAllBytes(Path.Combine(dir, "recipient.decap.key"), dk);
             File.WriteAllBytes(Path.Combine(dir, "signer.public.key"), signPk);
@@ -71,7 +71,7 @@ public sealed class VectorGenerator
         finally
         {
             TryDelete(tempDb);
-            TryDelete(PqSqliteManifest.SidecarPathFor(tempDb));
+            TryDelete(PqSqlCipherManifest.SidecarPathFor(tempDb));
         }
 
         return new
@@ -93,8 +93,8 @@ public sealed class VectorGenerator
         // by recovering through the manifest using the recipient key, then
         // read sqlite_master to prove it works; we surface the DEK bytes by
         // borrowing the same Internal helpers the vault uses.
-        var manifest = PqSqliteManifest.Load(dbPath);
-        var entry = manifest.FindByFingerprint(PqSqliteManifest.FingerprintOf(ek))
+        var manifest = PqSqlCipherManifest.Load(dbPath);
+        var entry = manifest.FindByFingerprint(PqSqlCipherManifest.FingerprintOf(ek))
             ?? throw new InvalidOperationException("manifest missing recipient entry");
 
         var kem = new MlKem768Kem();
@@ -117,6 +117,8 @@ public sealed class VectorGenerator
 
     private static byte[] BuildKekInfo(int version, string algorithmId, byte[] fingerprint)
     {
+        // Frozen wire-format label — intentionally retains the original package
+        // name for backward compatibility (see KekDerivation.Label).
         ReadOnlySpan<byte> label = "PostQuantum.Sqlite/kek"u8;
         byte[] algId = System.Text.Encoding.UTF8.GetBytes(algorithmId);
         byte[] info = new byte[label.Length + 1 + 4 + 1 + algId.Length + 1 + fingerprint.Length];
@@ -259,7 +261,7 @@ public sealed class VectorGenerator
         var current = new DirectoryInfo(AppContext.BaseDirectory);
         while (current is not null)
         {
-            string candidate = Path.Combine(current.FullName, "PostQuantum.Sqlite.Tests.csproj");
+            string candidate = Path.Combine(current.FullName, "PostQuantum.SqlCipher.Vault.Tests.csproj");
             if (File.Exists(candidate)) return Path.Combine(current.FullName, "Vectors");
             current = current.Parent;
         }

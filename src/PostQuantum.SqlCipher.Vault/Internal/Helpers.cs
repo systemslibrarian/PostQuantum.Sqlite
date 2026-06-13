@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Data.Sqlite;
 
-namespace PostQuantum.Sqlite.Internal;
+namespace PostQuantum.SqlCipher.Vault.Internal;
 
 /// <summary>
 /// HKDF-SHA256 domain-separated KEK derivation. KEM shared secrets (and
@@ -13,6 +13,11 @@ namespace PostQuantum.Sqlite.Internal;
 /// </summary>
 internal static class KekDerivation
 {
+    // Frozen wire-format constant — do NOT change with package renames.
+    // This label is mixed into the HKDF info for every wrapped DEK, so altering
+    // it would re-derive a different KEK and make every existing on-disk vault
+    // (and the v1 test vectors) un-openable. The original package name is
+    // retained here deliberately for backward compatibility.
     private const string Label = "PostQuantum.Sqlite/kek";
 
     public static byte[] DeriveKek(
@@ -69,7 +74,7 @@ internal static class AesGcmKeyWrap
         ReadOnlySpan<byte> databaseSalt, ReadOnlySpan<byte> recipientFingerprint)
     {
         if (wrappedDek.Length != DekSize + TagSize)
-            throw new PqSqliteException("Wrapped DEK has unexpected length.");
+            throw new PqSqlCipherException("Wrapped DEK has unexpected length.");
 
         byte[] dek = new byte[DekSize];
         using var gcm = new AesGcm(kek, TagSize);
@@ -81,7 +86,7 @@ internal static class AesGcmKeyWrap
         catch (AuthenticationTagMismatchException ex)
         {
             CryptographicOperations.ZeroMemory(dek);
-            throw new PqSqliteException(
+            throw new PqSqlCipherException(
                 "DEK unwrap failed (GCM tag mismatch). Wrong key, or wrapped DEK was tampered with or transplanted.", ex);
         }
         return dek;
@@ -138,18 +143,18 @@ internal static class SqlCipherInterop
     private static void ApplyKey(SqliteConnection conn, ReadOnlySpan<byte> dek, bool rekey)
     {
         if (dek.Length != AesGcmKeyWrap.DekSize)
-            throw new PqSqliteException("DEK must be exactly 32 bytes.");
+            throw new PqSqlCipherException("DEK must be exactly 32 bytes.");
 
         byte[] keySpec = BuildRawKeySpec(dek); // ASCII bytes of x'HEX' — zeroed below
         try
         {
             var handle = conn.Handle
-                ?? throw new PqSqliteException("Connection has no native handle (is it open?).");
+                ?? throw new PqSqlCipherException("Connection has no native handle (is it open?).");
             int rc = rekey
                 ? SQLitePCL.raw.sqlite3_rekey(handle, keySpec)
                 : SQLitePCL.raw.sqlite3_key(handle, keySpec);
             if (rc != SQLitePCL.raw.SQLITE_OK)
-                throw new PqSqliteException($"sqlite3_{(rekey ? "rekey" : "key")} failed with result code {rc}.");
+                throw new PqSqlCipherException($"sqlite3_{(rekey ? "rekey" : "key")} failed with result code {rc}.");
         }
         finally
         {
@@ -184,7 +189,7 @@ internal static class SqlCipherInterop
         }
         catch (SqliteException ex)
         {
-            throw new PqSqliteException("Database key check failed — wrong DEK or file is not a SQLCipher database.", ex);
+            throw new PqSqlCipherException("Database key check failed — wrong DEK or file is not a SQLCipher database.", ex);
         }
     }
 

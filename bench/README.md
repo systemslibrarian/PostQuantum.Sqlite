@@ -1,7 +1,7 @@
 # Benchmarks
 
 [BenchmarkDotNet](https://benchmarkdotnet.org/) suite covering the headline
-operations of `PqSqliteVault`. Lives outside `PostQuantum.Sqlite.sln` so
+operations of `PqSqlCipherVault`. Lives outside `PostQuantum.SqlCipher.Vault.sln` so
 the main CI build stays fast; run it explicitly when you care about
 performance numbers.
 
@@ -23,18 +23,18 @@ alongside the constant-time crypto cost.
 
 ```bash
 # All benchmarks (long; ~10 min depending on CPU).
-dotnet run -c Release --project bench/PostQuantum.Sqlite.Bench
+dotnet run -c Release --project bench/PostQuantum.SqlCipher.Vault.Bench
 
 # Subset by filter.
-dotnet run -c Release --project bench/PostQuantum.Sqlite.Bench -- --filter "*Create*"
-dotnet run -c Release --project bench/PostQuantum.Sqlite.Bench -- --filter "*Rotate*"
+dotnet run -c Release --project bench/PostQuantum.SqlCipher.Vault.Bench -- --filter "*Create*"
+dotnet run -c Release --project bench/PostQuantum.SqlCipher.Vault.Bench -- --filter "*Rotate*"
 
 # List available benchmarks without running them.
-dotnet run -c Release --project bench/PostQuantum.Sqlite.Bench -- --list flat
+dotnet run -c Release --project bench/PostQuantum.SqlCipher.Vault.Bench -- --list flat
 ```
 
 Output (markdown table + memory diagnoser) lands in
-`bench/PostQuantum.Sqlite.Bench/BenchmarkDotNet.Artifacts/results/`.
+`bench/PostQuantum.SqlCipher.Vault.Bench/BenchmarkDotNet.Artifacts/results/`.
 
 ## Methodology notes
 
@@ -50,8 +50,8 @@ Output (markdown table + memory diagnoser) lands in
 
 ## When to re-run
 
-- Before a release if any code path in `PqSqliteVault` or
-  `PqSqliteManifest` changed.
+- Before a release if any code path in `PqSqlCipherVault` or
+  `PqSqlCipherManifest` changed.
 - When considering an algorithm swap (e.g. X-Wing hybrid KEM via
   `IKemAlgorithm`, Argon2id via `IPasswordKdf`).
 - After upgrading `Microsoft.Data.Sqlite` or

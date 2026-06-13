@@ -1,15 +1,15 @@
 # Operations Guide
 
 How to deploy, maintain, and respond to incidents in a system built on
-`PostQuantum.Sqlite`. The package gives you safe primitives; this
+`PostQuantum.SqlCipher.Vault`. The package gives you safe primitives; this
 document is the part that decides whether they stay safe in
 production.
 
 ## 1. Pre-flight: things that MUST be true before you deploy
 
-- [ ] Your application constructs `PqSqliteVault` with a **pinned**
+- [ ] Your application constructs `PqSqlCipherVault` with a **pinned**
       trust anchor (see ADR [0001](decisions/0001-pinned-trust-anchor.md)).
-      `PqSqliteVault.CreateUnpinned()` MUST NOT appear in any
+      `PqSqlCipherVault.CreateUnpinned()` MUST NOT appear in any
       production code path. Add a test that fails the build if it does.
 - [ ] You have a documented place where the **signer private key**
       lives — HSM, OS keystore, KMS, or `PostQuantum.KeyManagement`.
@@ -70,7 +70,7 @@ the same filesystem an attacker may control.
 
 1. After every mutating call (`Create`, `AddRecipient`,
    `AddPassphraseRecipient`, `RotateDek`, `RemoveRecipientAndRotate`),
-   read `PqSqliteManifest.Load(dbPath).Revision` and persist it
+   read `PqSqlCipherManifest.Load(dbPath).Revision` and persist it
    somewhere the attacker cannot rewind.
 2. On every `Open`, pass that persisted value as
    `expectedMinimumRevision`. The vault refuses any manifest below

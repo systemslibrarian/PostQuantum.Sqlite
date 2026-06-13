@@ -41,12 +41,12 @@ jobs:
         run: |
           set -euo pipefail
           tag="${TAG#v}"
-          csproj_version=$(grep -oE "<Version>[^<]+</Version>" src/PostQuantum.Sqlite/PostQuantum.Sqlite.csproj | sed -E 's/<\/?Version>//g')
+          csproj_version=$(grep -oE "<Version>[^<]+</Version>" src/PostQuantum.SqlCipher.Vault/PostQuantum.SqlCipher.Vault.csproj | sed -E 's/<\/?Version>//g')
           if [ "$tag" != "$csproj_version" ]; then
             echo "::error::Tag $TAG (parsed $tag) does not match csproj <Version>$csproj_version</Version>."
             exit 1
           fi
-          echo "Releasing PostQuantum.Sqlite $csproj_version from $TAG."
+          echo "Releasing PostQuantum.SqlCipher.Vault $csproj_version from $TAG."
 
       - name: Set up .NET SDK from global.json
         uses: actions/setup-dotnet@v4
@@ -78,13 +78,13 @@ jobs:
         run: echo "LD_LIBRARY_PATH=${OPENSSL_PREFIX}/lib64:${OPENSSL_PREFIX}/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
 
       - name: Restore
-        run: dotnet restore PostQuantum.Sqlite.sln
+        run: dotnet restore PostQuantum.SqlCipher.Vault.sln
 
       - name: Audit NuGet packages for known vulnerabilities
         shell: bash
         run: |
           set -euo pipefail
-          out=$(dotnet list PostQuantum.Sqlite.sln package --vulnerable --include-transitive 2>&1)
+          out=$(dotnet list PostQuantum.SqlCipher.Vault.sln package --vulnerable --include-transitive 2>&1)
           echo "$out"
           if echo "$out" | grep -E "^\s+>\s+\S+\s+\S+\s+\S+\s+\S+\s+https?://" >/dev/null; then
             echo "::error::Vulnerable NuGet packages reported above. Refusing to release."
@@ -92,15 +92,15 @@ jobs:
           fi
 
       - name: Build (reproducible)
-        run: dotnet build PostQuantum.Sqlite.sln -c Release --no-restore -p:ContinuousIntegrationBuild=true
+        run: dotnet build PostQuantum.SqlCipher.Vault.sln -c Release --no-restore -p:ContinuousIntegrationBuild=true
 
       - name: Test
-        run: dotnet test PostQuantum.Sqlite.sln -c Release --no-build
+        run: dotnet test PostQuantum.SqlCipher.Vault.sln -c Release --no-build
 
       - name: Pack
         run: |
           mkdir -p artifacts
-          dotnet pack src/PostQuantum.Sqlite/PostQuantum.Sqlite.csproj \
+          dotnet pack src/PostQuantum.SqlCipher.Vault/PostQuantum.SqlCipher.Vault.csproj \
             -c Release --no-build -p:ContinuousIntegrationBuild=true \
             --output artifacts
 
@@ -148,7 +148,7 @@ jobs:
             echo "Build provenance attested via [actions/attest-build-provenance](https://github.com/actions/attest-build-provenance). Verify with:"
             echo ""
             echo '```'
-            echo "gh attestation verify artifacts/PostQuantum.Sqlite.${tag}.nupkg --owner systemslibrarian"
+            echo "gh attestation verify artifacts/PostQuantum.SqlCipher.Vault.${tag}.nupkg --owner systemslibrarian"
             echo '```'
             echo ""
             echo "### SHA-256"
@@ -163,7 +163,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
-          name: PostQuantum.Sqlite ${{ env.TAG }}
+          name: PostQuantum.SqlCipher.Vault ${{ env.TAG }}
           body: ${{ steps.notes.outputs.body }}
           draft: false
           prerelease: ${{ contains(env.TAG, '-') }}

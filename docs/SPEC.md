@@ -1,4 +1,4 @@
-# PostQuantum.Sqlite Manifest Specification (`.pqsm`), Version 1
+# PostQuantum.SqlCipher.Vault Manifest Specification (`.pqsm`), Version 1
 
 Status: **Draft** (pre-1.0 — the format may change until the package reaches 1.0.0)
 
@@ -97,7 +97,7 @@ KEK = HKDF-SHA256(
            | password-KDF output         (passphrase recipients),
     salt = database-salt (16 bytes),
     L    = 32,
-    info = "PostQuantum.Sqlite/kek" || 0x00
+    info = "PostQuantum.SqlCipher.Vault/kek" || 0x00
            || version as int32 big-endian || 0x00
            || algorithm-id (UTF-8)        || 0x00
            || fingerprint (16 bytes)

@@ -1,11 +1,11 @@
-# Fuzzing PostQuantum.Sqlite
+# Fuzzing PostQuantum.SqlCipher.Vault
 
-The [`PostQuantum.Sqlite.Fuzz`](PostQuantum.Sqlite.Fuzz/) project is a
-SharpFuzz harness pointed at `PqSqliteManifest.Deserialize` — the strict
+The [`PostQuantum.SqlCipher.Vault.Fuzz`](PostQuantum.SqlCipher.Vault.Fuzz/) project is a
+SharpFuzz harness pointed at `PqSqlCipherManifest.Deserialize` — the strict
 CBOR parser every reader, signer, and verifier funnels untrusted bytes
 through.
 
-A `PqSqliteException` is a **success** signal (parser rejected
+A `PqSqlCipherException` is a **success** signal (parser rejected
 malformed input). Any other exception or crash is a real finding.
 
 ## Requirements
@@ -23,11 +23,11 @@ malformed input). Any other exception or crash is a real finding.
 dotnet tool install --global SharpFuzz.CommandLine
 
 # Build the harness.
-dotnet build fuzz/PostQuantum.Sqlite.Fuzz -c Release
+dotnet build fuzz/PostQuantum.SqlCipher.Vault.Fuzz -c Release
 
 # Instrument the assemblies SharpFuzz needs to track for coverage.
 # We instrument the library DLL — the harness DLL doesn't need it.
-sharpfuzz fuzz/PostQuantum.Sqlite.Fuzz/bin/Release/net10.0/PostQuantum.Sqlite.dll
+sharpfuzz fuzz/PostQuantum.SqlCipher.Vault.Fuzz/bin/Release/net10.0/PostQuantum.SqlCipher.Vault.dll
 ```
 
 The first `sharpfuzz` invocation rewrites the IL of the library DLL in
@@ -39,7 +39,7 @@ place. To revert, rebuild.
 afl-fuzz \
     -i fuzz/corpus \
     -o fuzz/findings \
-    -- dotnet fuzz/PostQuantum.Sqlite.Fuzz/bin/Release/net10.0/PostQuantum.Sqlite.Fuzz.dll
+    -- dotnet fuzz/PostQuantum.SqlCipher.Vault.Fuzz/bin/Release/net10.0/PostQuantum.SqlCipher.Vault.Fuzz.dll
 ```
 
 The seed corpus in `fuzz/corpus/` is bootstrapped from the official
@@ -58,7 +58,7 @@ When AFL finds a crash, it writes the input bytes to
 
 ```bash
 dotnet run -c Release \
-    --project fuzz/PostQuantum.Sqlite.Fuzz \
+    --project fuzz/PostQuantum.SqlCipher.Vault.Fuzz \
     < fuzz/findings/default/crashes/<crash-id>
 ```
 

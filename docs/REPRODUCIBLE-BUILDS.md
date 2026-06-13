@@ -1,6 +1,6 @@
 # Reproducible Builds
 
-A third party should be able to rebuild any released `PostQuantum.Sqlite`
+A third party should be able to rebuild any released `PostQuantum.SqlCipher.Vault`
 NuGet package from the source at the tagged commit and get a byte-equal
 artifact (modulo timestamps embedded by NuGet itself, which we normalise
 below). This document is how.
@@ -36,21 +36,21 @@ VERSION=0.1.0
 TAG=v${VERSION}
 
 # 2. Clone the repo at exactly that tag.
-git clone --depth 1 --branch "$TAG" https://github.com/systemslibrarian/PostQuantum.Sqlite
-cd PostQuantum.Sqlite
+git clone --depth 1 --branch "$TAG" https://github.com/systemslibrarian/PostQuantum.SqlCipher.Vault
+cd PostQuantum.SqlCipher.Vault
 
 # 3. Restore and build under the same flags CI uses.
-dotnet restore PostQuantum.Sqlite.sln
-dotnet build PostQuantum.Sqlite.sln -c Release --no-restore \
+dotnet restore PostQuantum.SqlCipher.Vault.sln
+dotnet build PostQuantum.SqlCipher.Vault.sln -c Release --no-restore \
     -p:ContinuousIntegrationBuild=true
 
 # 4. Pack reproducibly.
-dotnet pack src/PostQuantum.Sqlite/PostQuantum.Sqlite.csproj \
+dotnet pack src/PostQuantum.SqlCipher.Vault/PostQuantum.SqlCipher.Vault.csproj \
     -c Release --no-build -p:ContinuousIntegrationBuild=true \
     --output artifacts
 
 # 5. Compute the SHA-256 and compare against the value in the GitHub Release notes.
-sha256sum "artifacts/PostQuantum.Sqlite.${VERSION}.nupkg"
+sha256sum "artifacts/PostQuantum.SqlCipher.Vault.${VERSION}.nupkg"
 ```
 
 The GitHub Release page for the tag publishes the SHA-256 we computed at
@@ -62,7 +62,7 @@ The release workflow signs an in-toto attestation that this commit, on
 this workflow, built that artifact. Verify with the GitHub CLI:
 
 ```bash
-gh attestation verify "artifacts/PostQuantum.Sqlite.${VERSION}.nupkg" \
+gh attestation verify "artifacts/PostQuantum.SqlCipher.Vault.${VERSION}.nupkg" \
     --owner systemslibrarian
 ```
 

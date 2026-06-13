@@ -1,10 +1,10 @@
 using System.Security.Cryptography;
 using System.Text.Json;
-using PostQuantum.Sqlite;
-using PostQuantum.Sqlite.Algorithms;
+using PostQuantum.SqlCipher.Vault;
+using PostQuantum.SqlCipher.Vault.Algorithms;
 using Xunit;
 
-namespace PostQuantum.Sqlite.Tests;
+namespace PostQuantum.SqlCipher.Vault.Tests;
 
 /// <summary>
 /// Validates the committed test-vector corpus under <c>Vectors/</c>:
@@ -43,7 +43,7 @@ public sealed class VectorTests
         byte[] salt = ReadVector(entry.GetProperty("databaseSalt").GetString()!);
         byte[] expectedDek = ReadVector(entry.GetProperty("expectedDek").GetString()!);
 
-        var manifest = PqSqliteManifest.Deserialize(pqsm);
+        var manifest = PqSqlCipherManifest.Deserialize(pqsm);
 
         Assert.Equal("ML-KEM-768", manifest.KemAlgorithmId);
         Assert.Equal("ML-DSA-65", manifest.SignatureAlgorithmId);
@@ -56,7 +56,7 @@ public sealed class VectorTests
         // Find the recipient entry by fingerprint, decapsulate, derive KEK,
         // unwrap the DEK — the full reader pipeline an independent
         // implementation must reproduce.
-        byte[] fingerprint = PqSqliteManifest.FingerprintOf(encapKey);
+        byte[] fingerprint = PqSqlCipherManifest.FingerprintOf(encapKey);
         var rec = manifest.FindByFingerprint(fingerprint);
         Assert.NotNull(rec);
         Assert.Equal(RecipientType.Kem, rec!.Type);
@@ -89,7 +89,7 @@ public sealed class VectorTests
         byte[] pqsm = ReadVector(entry.GetProperty("path").GetString()!);
         string expected = entry.GetProperty("expectedErrorContains").GetString()!;
 
-        var ex = Assert.Throws<PqSqliteException>(() => PqSqliteManifest.Deserialize(pqsm));
+        var ex = Assert.Throws<PqSqlCipherException>(() => PqSqlCipherManifest.Deserialize(pqsm));
         Assert.Contains(expected, ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -108,6 +108,8 @@ public sealed class VectorTests
 
     private static byte[] BuildKekInfo(int version, string algorithmId, byte[] fingerprint)
     {
+        // Frozen wire-format label — intentionally retains the original package
+        // name for backward compatibility (see KekDerivation.Label).
         ReadOnlySpan<byte> label = "PostQuantum.Sqlite/kek"u8;
         byte[] algId = System.Text.Encoding.UTF8.GetBytes(algorithmId);
         byte[] info = new byte[label.Length + 1 + 4 + 1 + algId.Length + 1 + fingerprint.Length];

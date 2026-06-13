@@ -15,7 +15,7 @@ updates:
 
   # NuGet: the library itself.
   - package-ecosystem: nuget
-    directory: "/src/PostQuantum.Sqlite"
+    directory: "/src/PostQuantum.SqlCipher.Vault"
     schedule:
       interval: weekly
       day: monday
@@ -34,7 +34,7 @@ updates:
 
   # NuGet: tests.
   - package-ecosystem: nuget
-    directory: "/tests/PostQuantum.Sqlite.Tests"
+    directory: "/tests/PostQuantum.SqlCipher.Vault.Tests"
     schedule:
       interval: weekly
       day: monday

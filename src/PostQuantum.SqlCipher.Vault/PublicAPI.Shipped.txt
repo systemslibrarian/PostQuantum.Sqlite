@@ -1,0 +1,120 @@
+﻿#nullable enable
+const PostQuantum.SqlCipher.Vault.Algorithms.Pbkdf2PasswordKdf.DefaultIterations = 600000 -> int
+const PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.CurrentVersion = 1 -> int
+const PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.FingerprintLength = 16 -> int
+const PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.NonceLength = 12 -> int
+const PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.PassphraseSaltLength = 32 -> int
+const PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.SaltLength = 16 -> int
+const PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.SidecarExtension = ".pqsm" -> string!
+const PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.WrappedDekLength = 48 -> int
+override PostQuantum.SqlCipher.Vault.KemRecipient.Equals(object? obj) -> bool
+override PostQuantum.SqlCipher.Vault.KemRecipient.GetHashCode() -> int
+override PostQuantum.SqlCipher.Vault.KemRecipient.ToString() -> string!
+PostQuantum.SqlCipher.Vault.Abstractions.IKemAlgorithm
+PostQuantum.SqlCipher.Vault.Abstractions.IKemAlgorithm.AlgorithmId.get -> string!
+PostQuantum.SqlCipher.Vault.Abstractions.IKemAlgorithm.CiphertextSizeInBytes.get -> int
+PostQuantum.SqlCipher.Vault.Abstractions.IKemAlgorithm.Decapsulate(System.ReadOnlySpan<byte> decapsulationKey, System.ReadOnlySpan<byte> ciphertext) -> byte[]!
+PostQuantum.SqlCipher.Vault.Abstractions.IKemAlgorithm.Encapsulate(System.ReadOnlySpan<byte> encapsulationKey) -> (byte[]! Ciphertext, byte[]! SharedSecret)
+PostQuantum.SqlCipher.Vault.Abstractions.IKemAlgorithm.EncapsulationKeySizeInBytes.get -> int
+PostQuantum.SqlCipher.Vault.Abstractions.IPasswordKdf
+PostQuantum.SqlCipher.Vault.Abstractions.IPasswordKdf.DeriveKey(System.ReadOnlySpan<char> passphrase, System.ReadOnlySpan<byte> salt, System.ReadOnlySpan<byte> serializedParameters) -> byte[]!
+PostQuantum.SqlCipher.Vault.Abstractions.IPasswordKdf.KdfId.get -> string!
+PostQuantum.SqlCipher.Vault.Abstractions.IPasswordKdf.SerializeParameters() -> byte[]!
+PostQuantum.SqlCipher.Vault.Abstractions.ISignatureAlgorithm
+PostQuantum.SqlCipher.Vault.Abstractions.ISignatureAlgorithm.AlgorithmId.get -> string!
+PostQuantum.SqlCipher.Vault.Abstractions.ISignatureAlgorithm.PublicKeySizeInBytes.get -> int
+PostQuantum.SqlCipher.Vault.Abstractions.ISignatureAlgorithm.Sign(System.ReadOnlySpan<byte> privateKey, System.ReadOnlySpan<byte> data) -> byte[]!
+PostQuantum.SqlCipher.Vault.Abstractions.ISignatureAlgorithm.SignatureSizeInBytes.get -> int
+PostQuantum.SqlCipher.Vault.Abstractions.ISignatureAlgorithm.Verify(System.ReadOnlySpan<byte> publicKey, System.ReadOnlySpan<byte> data, System.ReadOnlySpan<byte> signature) -> bool
+PostQuantum.SqlCipher.Vault.Algorithms.MlDsa65Signer
+PostQuantum.SqlCipher.Vault.Algorithms.MlDsa65Signer.AlgorithmId.get -> string!
+PostQuantum.SqlCipher.Vault.Algorithms.MlDsa65Signer.MlDsa65Signer() -> void
+PostQuantum.SqlCipher.Vault.Algorithms.MlDsa65Signer.PublicKeySizeInBytes.get -> int
+PostQuantum.SqlCipher.Vault.Algorithms.MlDsa65Signer.Sign(System.ReadOnlySpan<byte> privateKey, System.ReadOnlySpan<byte> data) -> byte[]!
+PostQuantum.SqlCipher.Vault.Algorithms.MlDsa65Signer.SignatureSizeInBytes.get -> int
+PostQuantum.SqlCipher.Vault.Algorithms.MlDsa65Signer.Verify(System.ReadOnlySpan<byte> publicKey, System.ReadOnlySpan<byte> data, System.ReadOnlySpan<byte> signature) -> bool
+PostQuantum.SqlCipher.Vault.Algorithms.MlKem768Kem
+PostQuantum.SqlCipher.Vault.Algorithms.MlKem768Kem.AlgorithmId.get -> string!
+PostQuantum.SqlCipher.Vault.Algorithms.MlKem768Kem.CiphertextSizeInBytes.get -> int
+PostQuantum.SqlCipher.Vault.Algorithms.MlKem768Kem.Decapsulate(System.ReadOnlySpan<byte> decapsulationKey, System.ReadOnlySpan<byte> ciphertext) -> byte[]!
+PostQuantum.SqlCipher.Vault.Algorithms.MlKem768Kem.Encapsulate(System.ReadOnlySpan<byte> encapsulationKey) -> (byte[]! Ciphertext, byte[]! SharedSecret)
+PostQuantum.SqlCipher.Vault.Algorithms.MlKem768Kem.EncapsulationKeySizeInBytes.get -> int
+PostQuantum.SqlCipher.Vault.Algorithms.MlKem768Kem.MlKem768Kem() -> void
+PostQuantum.SqlCipher.Vault.Algorithms.Pbkdf2PasswordKdf
+PostQuantum.SqlCipher.Vault.Algorithms.Pbkdf2PasswordKdf.DeriveKey(System.ReadOnlySpan<char> passphrase, System.ReadOnlySpan<byte> salt, System.ReadOnlySpan<byte> serializedParameters) -> byte[]!
+PostQuantum.SqlCipher.Vault.Algorithms.Pbkdf2PasswordKdf.KdfId.get -> string!
+PostQuantum.SqlCipher.Vault.Algorithms.Pbkdf2PasswordKdf.Pbkdf2PasswordKdf(int iterations = 600000) -> void
+PostQuantum.SqlCipher.Vault.Algorithms.Pbkdf2PasswordKdf.SerializeParameters() -> byte[]!
+PostQuantum.SqlCipher.Vault.KemRecipient
+PostQuantum.SqlCipher.Vault.KemRecipient.<Clone>$() -> PostQuantum.SqlCipher.Vault.KemRecipient!
+PostQuantum.SqlCipher.Vault.KemRecipient.Deconstruct(out byte[]! EncapsulationKey) -> void
+PostQuantum.SqlCipher.Vault.KemRecipient.EncapsulationKey.get -> byte[]!
+PostQuantum.SqlCipher.Vault.KemRecipient.EncapsulationKey.init -> void
+PostQuantum.SqlCipher.Vault.KemRecipient.Equals(PostQuantum.SqlCipher.Vault.KemRecipient? other) -> bool
+PostQuantum.SqlCipher.Vault.KemRecipient.Fingerprint.get -> byte[]!
+PostQuantum.SqlCipher.Vault.KemRecipient.KemRecipient(byte[]! EncapsulationKey) -> void
+PostQuantum.SqlCipher.Vault.PqSqlCipherException
+PostQuantum.SqlCipher.Vault.PqSqlCipherException.PqSqlCipherException(string! message) -> void
+PostQuantum.SqlCipher.Vault.PqSqlCipherException.PqSqlCipherException(string! message, System.Exception! inner) -> void
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.DatabaseSalt.get -> byte[]!
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.DatabaseSalt.init -> void
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.FindByFingerprint(System.ReadOnlySpan<byte> fingerprint) -> PostQuantum.SqlCipher.Vault.RecipientEntry?
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.GetSignedPayload() -> byte[]!
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.KemAlgorithmId.get -> string!
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.KemAlgorithmId.init -> void
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.PqSqlCipherManifest() -> void
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.Recipients.get -> System.Collections.Generic.List<PostQuantum.SqlCipher.Vault.RecipientEntry!>!
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.Revision.get -> long
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.Revision.set -> void
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.Save(string! databasePath) -> void
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.SaveAsPending(string! databasePath) -> void
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.Serialize() -> byte[]!
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.Sign(PostQuantum.SqlCipher.Vault.Abstractions.ISignatureAlgorithm! signer, System.ReadOnlySpan<byte> signingPrivateKey) -> void
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.Signature.get -> byte[]?
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.SignatureAlgorithmId.get -> string!
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.SignatureAlgorithmId.init -> void
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.SignerPublicKey.get -> byte[]!
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.SignerPublicKey.init -> void
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.Verify(PostQuantum.SqlCipher.Vault.Abstractions.ISignatureAlgorithm! verifier, System.ReadOnlySpan<byte> actualDatabaseSalt) -> void
+PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.Version.get -> int
+PostQuantum.SqlCipher.Vault.PqSqlCipherVault
+PostQuantum.SqlCipher.Vault.PqSqlCipherVault.AddPassphraseRecipient(string! databasePath, System.ReadOnlySpan<char> passphrase, byte[]! existingDecapsulationKey, byte[]! existingEncapsulationKey, byte[]! signingPrivateKey, PostQuantum.SqlCipher.Vault.Abstractions.IPasswordKdf? kdf = null) -> void
+PostQuantum.SqlCipher.Vault.PqSqlCipherVault.AddRecipient(string! databasePath, PostQuantum.SqlCipher.Vault.KemRecipient! newRecipient, byte[]! existingDecapsulationKey, byte[]! existingEncapsulationKey, byte[]! signingPrivateKey) -> void
+PostQuantum.SqlCipher.Vault.PqSqlCipherVault.Create(string! databasePath, System.Collections.Generic.IEnumerable<PostQuantum.SqlCipher.Vault.KemRecipient!>! recipients, byte[]! signingPrivateKey) -> Microsoft.Data.Sqlite.SqliteConnection!
+PostQuantum.SqlCipher.Vault.PqSqlCipherVault.IsPinned.get -> bool
+PostQuantum.SqlCipher.Vault.PqSqlCipherVault.Open(string! databasePath, byte[]! decapsulationKey, byte[]! encapsulationKey, long? expectedMinimumRevision = null) -> Microsoft.Data.Sqlite.SqliteConnection!
+PostQuantum.SqlCipher.Vault.PqSqlCipherVault.OpenWithPassphrase(string! databasePath, System.ReadOnlySpan<char> passphrase, PostQuantum.SqlCipher.Vault.Abstractions.IPasswordKdf? kdf = null, long? expectedMinimumRevision = null) -> Microsoft.Data.Sqlite.SqliteConnection!
+PostQuantum.SqlCipher.Vault.PqSqlCipherVault.PqSqlCipherVault(byte[]! trustedSignerPublicKey, PostQuantum.SqlCipher.Vault.Abstractions.IKemAlgorithm? kem = null, PostQuantum.SqlCipher.Vault.Abstractions.ISignatureAlgorithm? signer = null) -> void
+PostQuantum.SqlCipher.Vault.PqSqlCipherVault.RemoveRecipientAndRotate(string! databasePath, byte[]! removeFingerprint, byte[]! authorizedDecapsulationKey, byte[]! authorizedEncapsulationKey, byte[]! signingPrivateKey, System.Collections.Generic.IEnumerable<PostQuantum.SqlCipher.Vault.KemRecipient!>? remainingRecipients = null) -> void
+PostQuantum.SqlCipher.Vault.PqSqlCipherVault.RotateDek(string! databasePath, byte[]! authorizedDecapsulationKey, byte[]! authorizedEncapsulationKey, byte[]! signingPrivateKey, System.Collections.Generic.IEnumerable<PostQuantum.SqlCipher.Vault.KemRecipient!>? rewrapRecipients = null) -> void
+PostQuantum.SqlCipher.Vault.RecipientEntry
+PostQuantum.SqlCipher.Vault.RecipientEntry.Fingerprint.get -> byte[]!
+PostQuantum.SqlCipher.Vault.RecipientEntry.Fingerprint.init -> void
+PostQuantum.SqlCipher.Vault.RecipientEntry.KdfId.get -> string?
+PostQuantum.SqlCipher.Vault.RecipientEntry.KdfId.init -> void
+PostQuantum.SqlCipher.Vault.RecipientEntry.KdfParameters.get -> byte[]?
+PostQuantum.SqlCipher.Vault.RecipientEntry.KdfParameters.init -> void
+PostQuantum.SqlCipher.Vault.RecipientEntry.KemCiphertextOrSalt.get -> byte[]!
+PostQuantum.SqlCipher.Vault.RecipientEntry.KemCiphertextOrSalt.init -> void
+PostQuantum.SqlCipher.Vault.RecipientEntry.Nonce.get -> byte[]!
+PostQuantum.SqlCipher.Vault.RecipientEntry.Nonce.init -> void
+PostQuantum.SqlCipher.Vault.RecipientEntry.RecipientEntry() -> void
+PostQuantum.SqlCipher.Vault.RecipientEntry.Type.get -> PostQuantum.SqlCipher.Vault.RecipientType
+PostQuantum.SqlCipher.Vault.RecipientEntry.Type.init -> void
+PostQuantum.SqlCipher.Vault.RecipientEntry.WrappedDek.get -> byte[]!
+PostQuantum.SqlCipher.Vault.RecipientEntry.WrappedDek.init -> void
+PostQuantum.SqlCipher.Vault.RecipientType
+PostQuantum.SqlCipher.Vault.RecipientType.Kem = 1 -> PostQuantum.SqlCipher.Vault.RecipientType
+PostQuantum.SqlCipher.Vault.RecipientType.Passphrase = 2 -> PostQuantum.SqlCipher.Vault.RecipientType
+static PostQuantum.SqlCipher.Vault.Algorithms.MlDsa65Signer.GenerateKeyPair() -> (byte[]! PublicKey, byte[]! PrivateKey)
+static PostQuantum.SqlCipher.Vault.Algorithms.MlKem768Kem.GenerateKeyPair() -> (byte[]! EncapsulationKey, byte[]! DecapsulationKey)
+static PostQuantum.SqlCipher.Vault.KemRecipient.operator !=(PostQuantum.SqlCipher.Vault.KemRecipient? left, PostQuantum.SqlCipher.Vault.KemRecipient? right) -> bool
+static PostQuantum.SqlCipher.Vault.KemRecipient.operator ==(PostQuantum.SqlCipher.Vault.KemRecipient? left, PostQuantum.SqlCipher.Vault.KemRecipient? right) -> bool
+static PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.Deserialize(byte[]! cbor) -> PostQuantum.SqlCipher.Vault.PqSqlCipherManifest!
+static PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.FingerprintOf(System.ReadOnlySpan<byte> keyMaterial) -> byte[]!
+static PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.Load(string! databasePath) -> PostQuantum.SqlCipher.Vault.PqSqlCipherManifest!
+static PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.LoadFromSidecar(string! sidecarPath) -> PostQuantum.SqlCipher.Vault.PqSqlCipherManifest!
+static PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.PendingSidecarPathFor(string! databasePath) -> string!
+static PostQuantum.SqlCipher.Vault.PqSqlCipherManifest.SidecarPathFor(string! databasePath) -> string!
+static PostQuantum.SqlCipher.Vault.PqSqlCipherVault.CreateUnpinned(PostQuantum.SqlCipher.Vault.Abstractions.IKemAlgorithm? kem = null, PostQuantum.SqlCipher.Vault.Abstractions.ISignatureAlgorithm? signer = null) -> PostQuantum.SqlCipher.Vault.PqSqlCipherVault!

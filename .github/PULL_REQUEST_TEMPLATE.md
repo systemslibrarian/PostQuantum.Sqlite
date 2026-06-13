@@ -25,7 +25,7 @@ in the description and request review privately.
 ## Compatibility
 
 <!-- Required for any change to:
-       - Public API surface (src/PostQuantum.Sqlite/Abstractions, PqSqliteVault, PqSqliteManifest)
+       - Public API surface (src/PostQuantum.SqlCipher.Vault/Abstractions, PqSqlCipherVault, PqSqlCipherManifest)
        - Manifest format or signed payload
        - Wire-level behavior (atomic writes, pending recovery, salt binding)
      If none: "None — internal change." -->

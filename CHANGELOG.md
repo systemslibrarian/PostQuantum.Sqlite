@@ -14,7 +14,7 @@ and the infrastructure that proves a release is what it claims to be.
 
 ### Added — library
 
-- `PqSqliteVault` with the full key-lifecycle surface: `Create`,
+- `PqSqlCipherVault` with the full key-lifecycle surface: `Create`,
   `Open`, `AddRecipient`, `AddPassphraseRecipient`, `RotateDek`,
   `RemoveRecipientAndRotate`, and the deliberately-ugly
   `CreateUnpinned` read-only escape hatch.
@@ -36,7 +36,7 @@ and the infrastructure that proves a release is what it claims to be.
 
 ### Added — assurance
 
-- 36 tests in `PostQuantum.Sqlite.Tests` covering happy paths,
+- 36 tests in `PostQuantum.SqlCipher.Vault.Tests` covering happy paths,
   tampering, salt-binding, trust-pinning, mismatched signing keys,
   malicious CBOR (unknown fields, duplicates, wrong lengths,
   non-canonical encoding, trailing bytes), crash-safe rotation
@@ -45,16 +45,16 @@ and the infrastructure that proves a release is what it claims to be.
   cross-DB pending substitution, leftover tmp files), and a
   data-driven vector runner.
 - Official test-vector corpus under
-  `tests/PostQuantum.Sqlite.Tests/Vectors/`: one positive vector
+  `tests/PostQuantum.SqlCipher.Vault.Tests/Vectors/`: one positive vector
   (full reader pipeline byte-for-byte) plus six negative vectors,
   one per mandatory parser-rejection rule, with `manifest.json`
   describing each. `docs/test-vectors.md` is the conformance recipe
   for independent implementations.
-- `fuzz/PostQuantum.Sqlite.Fuzz/` SharpFuzz harness over
-  `PqSqliteManifest.Deserialize` with a round-trip identity check
+- `fuzz/PostQuantum.SqlCipher.Vault.Fuzz/` SharpFuzz harness over
+  `PqSqlCipherManifest.Deserialize` with a round-trip identity check
   on accepted inputs. Seed corpus bootstrapped from the test
   vectors. `fuzz/README.md` covers setup, AFL launch, and triage.
-- `bench/PostQuantum.Sqlite.Bench/` BenchmarkDotNet suite covering
+- `bench/PostQuantum.SqlCipher.Vault.Bench/` BenchmarkDotNet suite covering
   the headline operations at three database sizes so the linear
   cost of `sqlite3_rekey` is visible alongside the constant-time
   crypto cost.
@@ -151,7 +151,7 @@ and the infrastructure that proves a release is what it claims to be.
 
 ### Fixed
 
-- `PqSqliteVault` constructor and `Open` overload XML docs added
+- `PqSqlCipherVault` constructor and `Open` overload XML docs added
   the missing `<param>` tags (build was failing CS1573 under
   TreatWarningsAsErrors + GenerateDocumentationFile).
 
@@ -184,5 +184,5 @@ and the infrastructure that proves a release is what it claims to be.
   sustained fuzzing campaign — see `docs/ROADMAP.md` for the 1.0
   criteria around external assurance.
 
-[Unreleased]: https://github.com/systemslibrarian/PostQuantum.Sqlite/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/systemslibrarian/PostQuantum.Sqlite/releases/tag/v0.1.0
+[Unreleased]: https://github.com/systemslibrarian/PostQuantum.SqlCipher.Vault/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/systemslibrarian/PostQuantum.SqlCipher.Vault/releases/tag/v0.1.0

@@ -1,10 +1,10 @@
 using System.Security.Cryptography;
 using Microsoft.Data.Sqlite;
-using PostQuantum.Sqlite.Abstractions;
-using PostQuantum.Sqlite.Algorithms;
-using PostQuantum.Sqlite.Internal;
+using PostQuantum.SqlCipher.Vault.Abstractions;
+using PostQuantum.SqlCipher.Vault.Algorithms;
+using PostQuantum.SqlCipher.Vault.Internal;
 
-namespace PostQuantum.Sqlite;
+namespace PostQuantum.SqlCipher.Vault;
 
 /// <summary>A KEM recipient to whom the DEK should be wrapped.</summary>
 public sealed record KemRecipient(byte[] EncapsulationKey)
@@ -12,7 +12,7 @@ public sealed record KemRecipient(byte[] EncapsulationKey)
     private byte[]? _fingerprint;
 
     /// <summary>SHA-256 of the encapsulation key truncated to 16 bytes; cached on first access.</summary>
-    public byte[] Fingerprint => _fingerprint ??= PqSqliteManifest.FingerprintOf(EncapsulationKey);
+    public byte[] Fingerprint => _fingerprint ??= PqSqlCipherManifest.FingerprintOf(EncapsulationKey);
 }
 
 /// <summary>
@@ -36,7 +36,7 @@ public sealed record KemRecipient(byte[] EncapsulationKey)
 /// for tooling/inspection scenarios. Mutating operations on an unpinned
 /// vault always throw.
 /// </summary>
-public sealed class PqSqliteVault
+public sealed class PqSqlCipherVault
 {
     private readonly IKemAlgorithm _kem;
     private readonly ISignatureAlgorithm _signer;
@@ -53,18 +53,18 @@ public sealed class PqSqliteVault
     /// </param>
     /// <param name="kem">KEM algorithm to use; defaults to ML-KEM-768.</param>
     /// <param name="signer">Signature algorithm to use; defaults to ML-DSA-65.</param>
-    public PqSqliteVault(byte[] trustedSignerPublicKey, IKemAlgorithm? kem = null, ISignatureAlgorithm? signer = null)
+    public PqSqlCipherVault(byte[] trustedSignerPublicKey, IKemAlgorithm? kem = null, ISignatureAlgorithm? signer = null)
     {
         ArgumentNullException.ThrowIfNull(trustedSignerPublicKey);
         _kem = kem ?? new MlKem768Kem();
         _signer = signer ?? new MlDsa65Signer();
         if (trustedSignerPublicKey.Length != _signer.PublicKeySizeInBytes)
-            throw new PqSqliteException(
+            throw new PqSqlCipherException(
                 $"Trusted signer public key length {trustedSignerPublicKey.Length} does not match {_signer.AlgorithmId} ({_signer.PublicKeySizeInBytes} bytes).");
         _trustedSignerPublicKey = trustedSignerPublicKey;
     }
 
-    private PqSqliteVault(IKemAlgorithm? kem, ISignatureAlgorithm? signer)
+    private PqSqlCipherVault(IKemAlgorithm? kem, ISignatureAlgorithm? signer)
     {
         _kem = kem ?? new MlKem768Kem();
         _signer = signer ?? new MlDsa65Signer();
@@ -78,7 +78,7 @@ public sealed class PqSqliteVault
     /// operations only; all mutating operations throw. Intended for
     /// inspection tooling, never for production data paths.
     /// </summary>
-    public static PqSqliteVault CreateUnpinned(IKemAlgorithm? kem = null, ISignatureAlgorithm? signer = null) =>
+    public static PqSqlCipherVault CreateUnpinned(IKemAlgorithm? kem = null, ISignatureAlgorithm? signer = null) =>
         new(kem, signer);
 
     /// <summary>True when this vault enforces a pinned trust anchor.</summary>
@@ -102,11 +102,11 @@ public sealed class PqSqliteVault
         VerifySigningKeyMatchesPin(signingPrivateKey);
 
         if (File.Exists(databasePath))
-            throw new PqSqliteException($"Database already exists: {databasePath}");
+            throw new PqSqlCipherException($"Database already exists: {databasePath}");
 
         var recipientList = recipients.ToList();
         if (recipientList.Count == 0)
-            throw new PqSqliteException("At least one recipient is required — otherwise nobody can ever open this database.");
+            throw new PqSqlCipherException("At least one recipient is required — otherwise nobody can ever open this database.");
 
         byte[] dek = RandomNumberGenerator.GetBytes(AesGcmKeyWrap.DekSize);
         SqliteConnection? conn = null;
@@ -125,7 +125,7 @@ public sealed class PqSqliteVault
             byte[] salt = SqlCipherInterop.ReadDatabaseSalt(databasePath);
 
             // 3. Build, sign, and atomically save the manifest.
-            var manifest = new PqSqliteManifest
+            var manifest = new PqSqlCipherManifest
             {
                 KemAlgorithmId = _kem.AlgorithmId,
                 SignatureAlgorithmId = _signer.AlgorithmId,
@@ -197,17 +197,17 @@ public sealed class PqSqliteVault
 
         foreach (string sidecar in CandidateSidecars(databasePath))
         {
-            PqSqliteManifest manifest;
+            PqSqlCipherManifest manifest;
             try { manifest = LoadAndVerify(databasePath, sidecar); }
-            catch (PqSqliteException) when (sidecar != PqSqliteManifest.SidecarPathFor(databasePath)) { continue; }
+            catch (PqSqlCipherException) when (sidecar != PqSqlCipherManifest.SidecarPathFor(databasePath)) { continue; }
 
             var passphraseEntries = manifest.Recipients.Where(r => r.Type == RecipientType.Passphrase).ToList();
             if (passphraseEntries.Count == 0)
-                throw new PqSqliteException("Manifest has no passphrase recipients.");
+                throw new PqSqlCipherException("Manifest has no passphrase recipients.");
 
             var matching = passphraseEntries.Where(r => r.KdfId == kdf.KdfId).ToList();
             if (matching.Count == 0)
-                throw new PqSqliteException(
+                throw new PqSqlCipherException(
                     $"No passphrase entry uses KDF '{kdf.KdfId}'. Manifest entries use: {string.Join(", ", passphraseEntries.Select(r => r.KdfId).Distinct())}. " +
                     "Refusing to derive with a mismatched KDF.");
 
@@ -231,7 +231,7 @@ public sealed class PqSqliteVault
                         CryptographicOperations.ZeroMemory(dek);
                     }
                 }
-                catch (PqSqliteException)
+                catch (PqSqlCipherException)
                 {
                     // Wrong passphrase for this entry, or stale manifest; keep trying.
                 }
@@ -241,7 +241,7 @@ public sealed class PqSqliteVault
                 }
             }
         }
-        throw new PqSqliteException("Passphrase did not unwrap any matching recipient entry.");
+        throw new PqSqlCipherException("Passphrase did not unwrap any matching recipient entry.");
     }
 
     // ── Recipient management (manifest-only; cheap) ───────────────────────
@@ -266,7 +266,7 @@ public sealed class PqSqliteVault
         try
         {
             if (manifest.FindByFingerprint(newRecipient.Fingerprint) is not null)
-                throw new PqSqliteException("Recipient already present in manifest.");
+                throw new PqSqlCipherException("Recipient already present in manifest.");
 
             manifest.Recipients.Add(WrapForRecipient(newRecipient, dek, manifest.DatabaseSalt));
             manifest.Revision++;
@@ -295,11 +295,11 @@ public sealed class PqSqliteVault
         var (manifest, dek) = ResolveManifestAndDek(databasePath, existingDecapsulationKey, existingEncapsulationKey);
         try
         {
-            byte[] salt = RandomNumberGenerator.GetBytes(PqSqliteManifest.PassphraseSaltLength);
-            byte[] fingerprint = PqSqliteManifest.FingerprintOf(salt);
+            byte[] salt = RandomNumberGenerator.GetBytes(PqSqlCipherManifest.PassphraseSaltLength);
+            byte[] fingerprint = PqSqlCipherManifest.FingerprintOf(salt);
             byte[] kdfParams = kdf.SerializeParameters();
             if (kdfParams.Length == 0)
-                throw new PqSqliteException(
+                throw new PqSqlCipherException(
                     "KDF parameters must be non-empty. A KDF with no parameters should serialize an empty CBOR map (0xA0).");
             byte[] derived = kdf.DeriveKey(passphrase, salt, kdfParams);
             byte[] kek = KekDerivation.DeriveKek(derived, manifest.DatabaseSalt, manifest.Version, kdf.KdfId, fingerprint);
@@ -352,11 +352,11 @@ public sealed class PqSqliteVault
         try
         {
             if (manifest.FindByFingerprint(removeFingerprint) is null)
-                throw new PqSqliteException("Fingerprint not found in manifest.");
+                throw new PqSqlCipherException("Fingerprint not found in manifest.");
 
-            byte[] authorizedFp = PqSqliteManifest.FingerprintOf(authorizedEncapsulationKey);
+            byte[] authorizedFp = PqSqlCipherManifest.FingerprintOf(authorizedEncapsulationKey);
             if (authorizedFp.AsSpan().SequenceEqual(removeFingerprint))
-                throw new PqSqliteException("The authorizing key cannot remove itself.");
+                throw new PqSqlCipherException("The authorizing key cannot remove itself.");
 
             var rewrap = (remainingRecipients ?? Enumerable.Empty<KemRecipient>())
                 .Where(r => !r.Fingerprint.AsSpan().SequenceEqual(removeFingerprint));
@@ -409,7 +409,7 @@ public sealed class PqSqliteVault
 
     private void RotateDekCore(
         string databasePath,
-        PqSqliteManifest current,
+        PqSqlCipherManifest current,
         byte[] oldDek,
         byte[] authorizedEncapsulationKey,
         byte[] signingPrivateKey,
@@ -420,7 +420,7 @@ public sealed class PqSqliteVault
         {
             // 1. Build + sign the post-rotation manifest. sqlite3_rekey preserves
             //    the file salt, so the binding value carries over.
-            var next = new PqSqliteManifest
+            var next = new PqSqlCipherManifest
             {
                 KemAlgorithmId = current.KemAlgorithmId,
                 SignatureAlgorithmId = current.SignatureAlgorithmId,
@@ -452,7 +452,7 @@ public sealed class PqSqliteVault
             }
             catch
             {
-                TryDelete(PqSqliteManifest.PendingSidecarPathFor(databasePath));
+                TryDelete(PqSqlCipherManifest.PendingSidecarPathFor(databasePath));
                 throw;
             }
 
@@ -473,15 +473,15 @@ public sealed class PqSqliteVault
     /// promote it on success. Stale pending files (rotation crashed before
     /// rekey) are cleaned up when the primary proves correct.
     /// </summary>
-    private (PqSqliteManifest Manifest, byte[] Dek) ResolveManifestAndDek(
+    private (PqSqlCipherManifest Manifest, byte[] Dek) ResolveManifestAndDek(
         string databasePath, byte[] decapsulationKey, byte[] encapsulationKey)
     {
         if (!File.Exists(databasePath))
-            throw new PqSqliteException($"Database not found: {databasePath}");
+            throw new PqSqlCipherException($"Database not found: {databasePath}");
 
-        string primaryPath = PqSqliteManifest.SidecarPathFor(databasePath);
-        string pendingPath = PqSqliteManifest.PendingSidecarPathFor(databasePath);
-        PqSqliteException? primaryFailure = null;
+        string primaryPath = PqSqlCipherManifest.SidecarPathFor(databasePath);
+        string pendingPath = PqSqlCipherManifest.PendingSidecarPathFor(databasePath);
+        PqSqlCipherException? primaryFailure = null;
 
         foreach (string sidecar in CandidateSidecars(databasePath))
         {
@@ -508,7 +508,7 @@ public sealed class PqSqliteVault
 
                 return (manifest, dek);
             }
-            catch (PqSqliteException ex)
+            catch (PqSqlCipherException ex)
             {
                 if (isPrimary) primaryFailure = ex;
                 if (!File.Exists(pendingPath)) throw;
@@ -516,28 +516,28 @@ public sealed class PqSqliteVault
             }
         }
 
-        throw new PqSqliteException(
+        throw new PqSqlCipherException(
             "Could not resolve a working manifest: primary failed and pending manifest (if any) also failed.",
-            primaryFailure ?? new PqSqliteException("No candidate sidecars."));
+            primaryFailure ?? new PqSqlCipherException("No candidate sidecars."));
     }
 
     private static IEnumerable<string> CandidateSidecars(string databasePath)
     {
-        yield return PqSqliteManifest.SidecarPathFor(databasePath);
-        string pending = PqSqliteManifest.PendingSidecarPathFor(databasePath);
+        yield return PqSqlCipherManifest.SidecarPathFor(databasePath);
+        string pending = PqSqlCipherManifest.PendingSidecarPathFor(databasePath);
         if (File.Exists(pending)) yield return pending;
     }
 
     private static void PromotePending(string databasePath)
     {
-        string pending = PqSqliteManifest.PendingSidecarPathFor(databasePath);
+        string pending = PqSqlCipherManifest.PendingSidecarPathFor(databasePath);
         if (File.Exists(pending))
-            File.Move(pending, PqSqliteManifest.SidecarPathFor(databasePath), overwrite: true);
+            File.Move(pending, PqSqlCipherManifest.SidecarPathFor(databasePath), overwrite: true);
     }
 
     private static void PromoteIfPending(string databasePath, string sidecarUsed)
     {
-        if (sidecarUsed == PqSqliteManifest.PendingSidecarPathFor(databasePath))
+        if (sidecarUsed == PqSqlCipherManifest.PendingSidecarPathFor(databasePath))
             PromotePending(databasePath);
     }
 
@@ -561,10 +561,10 @@ public sealed class PqSqliteVault
         }
     }
 
-    private static void CheckRevision(PqSqliteManifest manifest, long? expectedMinimumRevision)
+    private static void CheckRevision(PqSqlCipherManifest manifest, long? expectedMinimumRevision)
     {
         if (expectedMinimumRevision is long min && manifest.Revision < min)
-            throw new PqSqliteException(
+            throw new PqSqlCipherException(
                 $"Manifest revision {manifest.Revision} is below the expected minimum {min}. " +
                 "Possible rollback attack: an older validly-signed manifest may have been substituted.");
     }
@@ -572,9 +572,9 @@ public sealed class PqSqliteVault
     /// <summary>Mutations require a trust anchor. There is deliberately no way around this.</summary>
     private byte[] RequirePinned(string operation) =>
         _trustedSignerPublicKey
-        ?? throw new PqSqliteException(
+        ?? throw new PqSqlCipherException(
             $"{operation} requires a pinned trust anchor. Construct the vault with the trusted signer " +
-            "public key: new PqSqliteVault(trustedSignerPublicKey). Unpinned vaults are read-only by design.");
+            "public key: new PqSqlCipherVault(trustedSignerPublicKey). Unpinned vaults are read-only by design.");
 
     /// <summary>Prove the signing private key corresponds to the pinned trust anchor before re-signing anything.</summary>
     private void VerifySigningKeyMatchesPin(byte[] signingPrivateKey)
@@ -583,7 +583,7 @@ public sealed class PqSqliteVault
         byte[] challenge = RandomNumberGenerator.GetBytes(32);
         byte[] sig = _signer.Sign(signingPrivateKey, challenge);
         if (!_signer.Verify(pin, challenge, sig))
-            throw new PqSqliteException(
+            throw new PqSqlCipherException(
                 "Signing private key does not correspond to the pinned trust anchor. " +
                 "Refusing to re-sign — this would either fail trust pinning later or silently change the trust anchor.");
     }
@@ -591,7 +591,7 @@ public sealed class PqSqliteVault
     private void ValidateEncapsulationKey(byte[] encapsulationKey)
     {
         if (encapsulationKey.Length != _kem.EncapsulationKeySizeInBytes)
-            throw new PqSqliteException(
+            throw new PqSqlCipherException(
                 $"Encapsulation key length {encapsulationKey.Length} does not match {_kem.AlgorithmId} ({_kem.EncapsulationKeySizeInBytes} bytes).");
     }
 
@@ -600,7 +600,7 @@ public sealed class PqSqliteVault
         ValidateEncapsulationKey(recipient.EncapsulationKey);
         var (ciphertext, sharedSecret) = _kem.Encapsulate(recipient.EncapsulationKey);
         byte[] fingerprint = recipient.Fingerprint;
-        byte[] kek = KekDerivation.DeriveKek(sharedSecret, databaseSalt, PqSqliteManifest.CurrentVersion, _kem.AlgorithmId, fingerprint);
+        byte[] kek = KekDerivation.DeriveKek(sharedSecret, databaseSalt, PqSqlCipherManifest.CurrentVersion, _kem.AlgorithmId, fingerprint);
         CryptographicOperations.ZeroMemory(sharedSecret);
         try
         {
@@ -620,15 +620,15 @@ public sealed class PqSqliteVault
         }
     }
 
-    private byte[] RecoverDek(PqSqliteManifest manifest, byte[] decapsulationKey, byte[] encapsulationKey)
+    private byte[] RecoverDek(PqSqlCipherManifest manifest, byte[] decapsulationKey, byte[] encapsulationKey)
     {
-        byte[] fingerprint = PqSqliteManifest.FingerprintOf(encapsulationKey);
+        byte[] fingerprint = PqSqlCipherManifest.FingerprintOf(encapsulationKey);
         var entry = manifest.FindByFingerprint(fingerprint)
-            ?? throw new PqSqliteException("This key is not a recipient of this database.");
+            ?? throw new PqSqlCipherException("This key is not a recipient of this database.");
         if (entry.Type != RecipientType.Kem)
-            throw new PqSqliteException("Manifest entry for this fingerprint is not a KEM recipient.");
+            throw new PqSqlCipherException("Manifest entry for this fingerprint is not a KEM recipient.");
         if (entry.KemCiphertextOrSalt.Length != _kem.CiphertextSizeInBytes)
-            throw new PqSqliteException($"KEM ciphertext length does not match {_kem.AlgorithmId}.");
+            throw new PqSqlCipherException($"KEM ciphertext length does not match {_kem.AlgorithmId}.");
 
         byte[] sharedSecret = _kem.Decapsulate(decapsulationKey, entry.KemCiphertextOrSalt);
         byte[] kek = KekDerivation.DeriveKek(sharedSecret, manifest.DatabaseSalt, manifest.Version, _kem.AlgorithmId, fingerprint);
@@ -649,22 +649,22 @@ public sealed class PqSqliteVault
     /// enforcement, trust-anchor pinning (when the vault is pinned), salt
     /// binding, and signature.
     /// </summary>
-    private PqSqliteManifest LoadAndVerify(string databasePath, string sidecarPath)
+    private PqSqlCipherManifest LoadAndVerify(string databasePath, string sidecarPath)
     {
-        var manifest = PqSqliteManifest.LoadFromSidecar(sidecarPath);
+        var manifest = PqSqlCipherManifest.LoadFromSidecar(sidecarPath);
 
         if (manifest.KemAlgorithmId != _kem.AlgorithmId)
-            throw new PqSqliteException($"Manifest uses KEM '{manifest.KemAlgorithmId}' but this vault is configured for '{_kem.AlgorithmId}'.");
+            throw new PqSqlCipherException($"Manifest uses KEM '{manifest.KemAlgorithmId}' but this vault is configured for '{_kem.AlgorithmId}'.");
         if (manifest.SignatureAlgorithmId != _signer.AlgorithmId)
-            throw new PqSqliteException($"Manifest uses signature algorithm '{manifest.SignatureAlgorithmId}' but this vault is configured for '{_signer.AlgorithmId}'.");
+            throw new PqSqlCipherException($"Manifest uses signature algorithm '{manifest.SignatureAlgorithmId}' but this vault is configured for '{_signer.AlgorithmId}'.");
 
         foreach (var r in manifest.Recipients.Where(r => r.Type == RecipientType.Kem))
             if (r.KemCiphertextOrSalt.Length != _kem.CiphertextSizeInBytes)
-                throw new PqSqliteException($"Manifest contains a KEM ciphertext whose length does not match {_kem.AlgorithmId}.");
+                throw new PqSqlCipherException($"Manifest contains a KEM ciphertext whose length does not match {_kem.AlgorithmId}.");
 
         if (_trustedSignerPublicKey is not null &&
             !_trustedSignerPublicKey.AsSpan().SequenceEqual(manifest.SignerPublicKey))
-            throw new PqSqliteException("Manifest signer public key does not match the pinned trust anchor.");
+            throw new PqSqlCipherException("Manifest signer public key does not match the pinned trust anchor.");
 
         byte[] actualSalt = SqlCipherInterop.ReadDatabaseSalt(databasePath);
         manifest.Verify(_signer, actualSalt);

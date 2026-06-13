@@ -1,9 +1,9 @@
-# PostQuantum.Sqlite
+# PostQuantum.SqlCipher.Vault
 
 **Post-quantum key management for SQLCipher SQLite databases.**
 
 > SQLCipher protects the database pages.
-> PostQuantum.Sqlite protects the database **key lifecycle**:
+> PostQuantum.SqlCipher.Vault protects the database **key lifecycle**:
 > ML-KEM recipient wrapping, ML-DSA manifest signing, signer pinning,
 > safe sharing, revocation, rotation, and recovery.
 >
@@ -65,15 +65,15 @@ Performance benchmarks: [`bench/README.md`](bench/README.md).
 ## Quick start
 
 ```csharp
-using PostQuantum.Sqlite;
-using PostQuantum.Sqlite.Algorithms;
+using PostQuantum.SqlCipher.Vault;
+using PostQuantum.SqlCipher.Vault.Algorithms;
 
 var (aliceEk, aliceDk) = MlKem768Kem.GenerateKeyPair();
 var (signPk, signSk)   = MlDsa65Signer.GenerateKeyPair();
 
 // The vault is constructed around ONE trusted signer key — the trust
 // anchor, distributed with your application like a root certificate.
-var vault = new PqSqliteVault(trustedSignerPublicKey: signPk);
+var vault = new PqSqlCipherVault(trustedSignerPublicKey: signPk);
 
 // Create — random DEK, wrapped to Alice, manifest signed at revision 1
 using var conn = vault.Create("mydata.db", new[] { new KemRecipient(aliceEk) }, signSk);
@@ -97,7 +97,7 @@ vault.RemoveRecipientAndRotate("mydata.db", bobFingerprint, aliceDk, aliceEk, si
 - **Mutations prove key correspondence.** Before re-signing, the supplied
   signing private key is proven (random-challenge sign/verify) to match the
   pinned anchor — a wrong key cannot silently change the trust root.
-- **`PqSqliteVault.CreateUnpinned()` exists and is deliberately ugly.** It
+- **`PqSqlCipherVault.CreateUnpinned()` exists and is deliberately ugly.** It
   is read-only (all mutating operations throw), accepts any
   internally-consistent manifest, and is intended for inspection tooling
   only. If it appears on a production data path, that is a bug in your
@@ -195,9 +195,9 @@ that maturity level.
 ## Building
 
 ```bash
-dotnet build PostQuantum.Sqlite.sln
+dotnet build PostQuantum.SqlCipher.Vault.sln
 dotnet test
-dotnet pack src/PostQuantum.Sqlite -c Release
+dotnet pack src/PostQuantum.SqlCipher.Vault -c Release
 ```
 
 Requires the .NET 10 SDK (LTS; BCL ML-KEM / ML-DSA). Native SQLCipher is

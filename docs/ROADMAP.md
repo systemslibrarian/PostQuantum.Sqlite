@@ -26,7 +26,7 @@ red blocks the cut.
 ### External assurance
 - [ ] An independent security review of the frozen 1.0 candidate is
       complete; report and disposition of findings published.
-- [ ] Fuzzing campaign over `PqSqliteManifest.Deserialize` and the
+- [ ] Fuzzing campaign over `PqSqlCipherManifest.Deserialize` and the
       manifest state machine has run continuously for ≥ 1 CPU-month
       with no unresolved findings; corpus committed.
 - [ ] Property-based tests cover wrap/unwrap, sign/verify, manifest

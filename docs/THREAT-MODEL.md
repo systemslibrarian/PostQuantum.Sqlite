@@ -1,11 +1,11 @@
-# PostQuantum.Sqlite Threat Model
+# PostQuantum.SqlCipher.Vault Threat Model
 
 Status: living document. If an attack works and isn't listed here, that is a
 reportable bug (see SECURITY.md) — either in the code or in this document.
 
 ## 1. The one-sentence scope statement
 
-> SQLCipher encrypts the database pages. PostQuantum.Sqlite protects the
+> SQLCipher encrypts the database pages. PostQuantum.SqlCipher.Vault protects the
 > database **key lifecycle**: recipient sharing, post-quantum key wrapping,
 > manifest signing, revocation, and rotation.
 
@@ -29,7 +29,7 @@ problem, is the layer this package owns.
 
 ## 3. Trust anchors
 
-1. **The pinned signer public key** — supplied to the `PqSqliteVault`
+1. **The pinned signer public key** — supplied to the `PqSqlCipherVault`
    constructor and distributed with the application like a root certificate.
    Every operation refuses manifests signed by any other key. The unpinned
    escape hatch is read-only and intended for inspection tooling.
@@ -99,7 +99,7 @@ bounded by, the BCL and SQLCipher implementations.
 
 ## 6. Deployment requirements (what the application MUST do)
 
-1. **Pin the signer.** Construct `PqSqliteVault` with the trusted signer
+1. **Pin the signer.** Construct `PqSqlCipherVault` with the trusted signer
    public key, distributed with the application. Never use the unpinned
    vault on a production data path.
 2. **Protect the signing private key** — HSM, OS keystore, or

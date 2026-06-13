@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/PostQuantum.Sqlite/PostQuantum.Sqlite.csproj" />
+    <ProjectReference Include="../../src/PostQuantum.SqlCipher.Vault/PostQuantum.SqlCipher.Vault.csproj" />
     <PackageReference Include="SharpFuzz" Version="2.2.0" />
   </ItemGroup>
 

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Official PostQuantum.Sqlite test vectors. See docs/test-vectors.md.",
+  "description": "Official PostQuantum.SqlCipher.Vault test vectors. See docs/test-vectors.md.",
   "positive": [
     {
       "name": "kem-single-recipient",

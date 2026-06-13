@@ -5,7 +5,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
     <!-- Package metadata -->
-    <PackageId>PostQuantum.Sqlite</PackageId>
+    <PackageId>PostQuantum.SqlCipher.Vault</PackageId>
     <Version>0.1.0</Version>
     <Authors>Paul Clark</Authors>
     <Description>Post-quantum key lifecycle for SQLCipher-encrypted SQLite databases. Wraps the AES-256 data encryption key under ML-KEM-768 encapsulation, supports multi-recipient sharing, and signs the key manifest with ML-DSA-65. AES-256 page encryption is already quantum-resistant; this package makes the key wrapping, sharing, and signing quantum-resistant too.</Description>
@@ -13,8 +13,8 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>https://github.com/systemslibrarian/PostQuantum.Sqlite</RepositoryUrl>
-    <PackageProjectUrl>https://github.com/systemslibrarian/PostQuantum.Sqlite</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/systemslibrarian/PostQuantum.SqlCipher.Vault</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/systemslibrarian/PostQuantum.SqlCipher.Vault</PackageProjectUrl>
 
     <!-- Reproducible NuGet builds + SourceLink -->
     <PublishRepositoryUrl>true</PublishRepositoryUrl>

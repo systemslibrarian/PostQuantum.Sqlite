@@ -80,7 +80,7 @@ jobs:
           echo "LD_LIBRARY_PATH=${OPENSSL_PREFIX}/lib64:${OPENSSL_PREFIX}/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
 
       - name: Restore
-        run: dotnet restore PostQuantum.Sqlite.sln
+        run: dotnet restore PostQuantum.SqlCipher.Vault.sln
 
       - name: Audit NuGet packages for known vulnerabilities
         # Linux-only gate to avoid duplicate noise across three platforms.
@@ -91,7 +91,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          out=$(dotnet list PostQuantum.Sqlite.sln package --vulnerable --include-transitive 2>&1)
+          out=$(dotnet list PostQuantum.SqlCipher.Vault.sln package --vulnerable --include-transitive 2>&1)
           echo "$out"
           if echo "$out" | grep -E "^\s+>\s+\S+\s+\S+\s+\S+\s+\S+\s+https?://" >/dev/null; then
             echo "::error::Vulnerable NuGet packages reported above. Fail the build."
@@ -99,10 +99,10 @@ jobs:
           fi
 
       - name: Build
-        run: dotnet build PostQuantum.Sqlite.sln -c Release --no-restore -p:ContinuousIntegrationBuild=true
+        run: dotnet build PostQuantum.SqlCipher.Vault.sln -c Release --no-restore -p:ContinuousIntegrationBuild=true
 
       - name: Test
-        run: dotnet test PostQuantum.Sqlite.sln -c Release --no-build --logger "trx;LogFileName=test-results.trx" --results-directory TestResults
+        run: dotnet test PostQuantum.SqlCipher.Vault.sln -c Release --no-build --logger "trx;LogFileName=test-results.trx" --results-directory TestResults
 
       - name: Upload test results
         if: always()
@@ -113,7 +113,7 @@ jobs:
 
       - name: Pack (Linux only, no publish)
         if: runner.os == 'Linux'
-        run: dotnet pack src/PostQuantum.Sqlite/PostQuantum.Sqlite.csproj -c Release --no-build -p:ContinuousIntegrationBuild=true --output artifacts
+        run: dotnet pack src/PostQuantum.SqlCipher.Vault/PostQuantum.SqlCipher.Vault.csproj -c Release --no-build -p:ContinuousIntegrationBuild=true --output artifacts
 
       - name: Upload NuGet artifact
         if: runner.os == 'Linux'

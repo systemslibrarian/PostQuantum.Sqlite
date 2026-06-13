@@ -39,12 +39,12 @@ Thumbs.db
 *.pqsm.*.tmp
 
 # But the conformance test vectors AND the fuzz seed corpus ARE checked in.
-!tests/PostQuantum.Sqlite.Tests/Vectors/**
+!tests/PostQuantum.SqlCipher.Vault.Tests/Vectors/**
 !fuzz/corpus/**
 
 # Fuzz outputs are not.
 fuzz/findings/
-fuzz/PostQuantum.Sqlite.Fuzz/bin-instrumented/
+fuzz/PostQuantum.SqlCipher.Vault.Fuzz/bin-instrumented/
 
 # BenchmarkDotNet artefacts (per-run results, not source).
-bench/PostQuantum.Sqlite.Bench/BenchmarkDotNet.Artifacts/
+bench/PostQuantum.SqlCipher.Vault.Bench/BenchmarkDotNet.Artifacts/

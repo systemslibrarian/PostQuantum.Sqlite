@@ -1,7 +1,7 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PostQuantum.Sqlite", "src\PostQuantum.Sqlite\PostQuantum.Sqlite.csproj", "{A1000000-0000-0000-0000-000000000001}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PostQuantum.SqlCipher.Vault", "src\PostQuantum.SqlCipher.Vault\PostQuantum.SqlCipher.Vault.csproj", "{A1000000-0000-0000-0000-000000000001}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PostQuantum.Sqlite.Tests", "tests\PostQuantum.Sqlite.Tests\PostQuantum.Sqlite.Tests.csproj", "{A1000000-0000-0000-0000-000000000002}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PostQuantum.SqlCipher.Vault.Tests", "tests\PostQuantum.SqlCipher.Vault.Tests\PostQuantum.SqlCipher.Vault.Tests.csproj", "{A1000000-0000-0000-0000-000000000002}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuickStart", "samples\QuickStart\QuickStart.csproj", "{A1000000-0000-0000-0000-000000000003}"
 EndProject

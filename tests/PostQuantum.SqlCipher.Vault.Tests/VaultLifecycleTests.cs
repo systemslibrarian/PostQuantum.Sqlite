@@ -1,9 +1,9 @@
 using Microsoft.Data.Sqlite;
-using PostQuantum.Sqlite;
-using PostQuantum.Sqlite.Algorithms;
+using PostQuantum.SqlCipher.Vault;
+using PostQuantum.SqlCipher.Vault.Algorithms;
 using Xunit;
 
-namespace PostQuantum.Sqlite.Tests;
+namespace PostQuantum.SqlCipher.Vault.Tests;
 
 public class VaultLifecycleTests : IDisposable
 {
@@ -20,7 +20,7 @@ public class VaultLifecycleTests : IDisposable
     {
         var (ek, dk) = Kem();
         var (pk, sk) = Sig();
-        var vault = new PqSqliteVault(pk);
+        var vault = new PqSqlCipherVault(pk);
 
         using (var conn = vault.Create(DbPath, new[] { new KemRecipient(ek) }, sk))
         {
@@ -41,11 +41,11 @@ public class VaultLifecycleTests : IDisposable
         var (ek, _) = Kem();
         var (strangerEk, strangerDk) = Kem();
         var (pk, sk) = Sig();
-        var vault = new PqSqliteVault(pk);
+        var vault = new PqSqlCipherVault(pk);
 
         vault.Create(DbPath, new[] { new KemRecipient(ek) }, sk).Dispose();
 
-        Assert.Throws<PqSqliteException>(() => vault.Open(DbPath, strangerDk, strangerEk));
+        Assert.Throws<PqSqlCipherException>(() => vault.Open(DbPath, strangerDk, strangerEk));
     }
 
     [Fact]
@@ -53,15 +53,15 @@ public class VaultLifecycleTests : IDisposable
     {
         var (ek, dk) = Kem();
         var (pk, sk) = Sig();
-        var vault = new PqSqliteVault(pk);
+        var vault = new PqSqlCipherVault(pk);
         vault.Create(DbPath, new[] { new KemRecipient(ek) }, sk).Dispose();
 
-        string sidecar = PqSqliteManifest.SidecarPathFor(DbPath);
+        string sidecar = PqSqlCipherManifest.SidecarPathFor(DbPath);
         byte[] bytes = File.ReadAllBytes(sidecar);
         bytes[^20] ^= 0xFF;
         File.WriteAllBytes(sidecar, bytes);
 
-        Assert.Throws<PqSqliteException>(() => vault.Open(DbPath, dk, ek));
+        Assert.Throws<PqSqlCipherException>(() => vault.Open(DbPath, dk, ek));
     }
 
     [Fact]
@@ -70,11 +70,11 @@ public class VaultLifecycleTests : IDisposable
         var (ek, dk) = Kem();
         var (pk, sk) = Sig();
         var (evilPk, evilSk) = Sig();
-        var vault = new PqSqliteVault(pk);
+        var vault = new PqSqlCipherVault(pk);
         vault.Create(DbPath, new[] { new KemRecipient(ek) }, sk).Dispose();
 
-        var manifest = PqSqliteManifest.Load(DbPath);
-        var forged = new PqSqliteManifest
+        var manifest = PqSqlCipherManifest.Load(DbPath);
+        var forged = new PqSqlCipherManifest
         {
             KemAlgorithmId = manifest.KemAlgorithmId,
             SignatureAlgorithmId = manifest.SignatureAlgorithmId,
@@ -86,7 +86,7 @@ public class VaultLifecycleTests : IDisposable
         forged.Sign(new MlDsa65Signer(), evilSk);
         forged.Save(DbPath);
 
-        var ex = Assert.Throws<PqSqliteException>(() => vault.Open(DbPath, dk, ek));
+        var ex = Assert.Throws<PqSqlCipherException>(() => vault.Open(DbPath, dk, ek));
         Assert.Contains("pinned trust anchor", ex.Message);
     }
 
@@ -95,16 +95,16 @@ public class VaultLifecycleTests : IDisposable
     {
         var (ek, dk) = Kem();
         var (pk, sk) = Sig();
-        var vault = new PqSqliteVault(pk);
+        var vault = new PqSqlCipherVault(pk);
 
         string dbA = Path.Combine(_dir, "a.db");
         string dbB = Path.Combine(_dir, "b.db");
         vault.Create(dbA, new[] { new KemRecipient(ek) }, sk).Dispose();
         vault.Create(dbB, new[] { new KemRecipient(ek) }, sk).Dispose();
 
-        File.Copy(PqSqliteManifest.SidecarPathFor(dbA), PqSqliteManifest.SidecarPathFor(dbB), overwrite: true);
+        File.Copy(PqSqlCipherManifest.SidecarPathFor(dbA), PqSqlCipherManifest.SidecarPathFor(dbB), overwrite: true);
 
-        var ex = Assert.Throws<PqSqliteException>(() => vault.Open(dbB, dk, ek));
+        var ex = Assert.Throws<PqSqlCipherException>(() => vault.Open(dbB, dk, ek));
         Assert.Contains("salt mismatch", ex.Message);
     }
 
@@ -114,13 +114,13 @@ public class VaultLifecycleTests : IDisposable
         var (ek1, dk1) = Kem();
         var (ek2, dk2) = Kem();
         var (pk, sk) = Sig();
-        var vault = new PqSqliteVault(pk);
+        var vault = new PqSqlCipherVault(pk);
 
         vault.Create(DbPath, new[] { new KemRecipient(ek1) }, sk).Dispose();
-        Assert.Equal(1, PqSqliteManifest.Load(DbPath).Revision);
+        Assert.Equal(1, PqSqlCipherManifest.Load(DbPath).Revision);
 
         vault.AddRecipient(DbPath, new KemRecipient(ek2), dk1, ek1, sk);
-        Assert.Equal(2, PqSqliteManifest.Load(DbPath).Revision);
+        Assert.Equal(2, PqSqlCipherManifest.Load(DbPath).Revision);
 
         using var conn = vault.Open(DbPath, dk2, ek2);
         Assert.Equal(System.Data.ConnectionState.Open, conn.State);
@@ -132,7 +132,7 @@ public class VaultLifecycleTests : IDisposable
         var (ek1, dk1) = Kem();
         var (ek2, dk2) = Kem();
         var (pk, sk) = Sig();
-        var vault = new PqSqliteVault(pk);
+        var vault = new PqSqlCipherVault(pk);
 
         vault.Create(DbPath, new[] { new KemRecipient(ek1), new KemRecipient(ek2) }, sk).Dispose();
 
@@ -140,8 +140,8 @@ public class VaultLifecycleTests : IDisposable
         vault.RemoveRecipientAndRotate(DbPath, fp2, dk1, ek1, sk);
 
         vault.Open(DbPath, dk1, ek1).Dispose();
-        Assert.Throws<PqSqliteException>(() => vault.Open(DbPath, dk2, ek2));
-        Assert.False(File.Exists(PqSqliteManifest.PendingSidecarPathFor(DbPath)));
+        Assert.Throws<PqSqlCipherException>(() => vault.Open(DbPath, dk2, ek2));
+        Assert.False(File.Exists(PqSqlCipherManifest.PendingSidecarPathFor(DbPath)));
     }
 
     [Fact]
@@ -149,7 +149,7 @@ public class VaultLifecycleTests : IDisposable
     {
         var (ek, dk) = Kem();
         var (pk, sk) = Sig();
-        var vault = new PqSqliteVault(pk);
+        var vault = new PqSqlCipherVault(pk);
         var fastKdf = new Pbkdf2PasswordKdf(iterations: 10_000); // low iterations for test speed
 
         vault.Create(DbPath, new[] { new KemRecipient(ek) }, sk).Dispose();
@@ -158,7 +158,7 @@ public class VaultLifecycleTests : IDisposable
         using var conn = vault.OpenWithPassphrase(DbPath, "correct horse battery staple", kdf: fastKdf);
         Assert.Equal(System.Data.ConnectionState.Open, conn.State);
 
-        Assert.Throws<PqSqliteException>(() => vault.OpenWithPassphrase(DbPath, "wrong passphrase", kdf: fastKdf));
+        Assert.Throws<PqSqlCipherException>(() => vault.OpenWithPassphrase(DbPath, "wrong passphrase", kdf: fastKdf));
     }
 
     [Fact]
@@ -167,7 +167,7 @@ public class VaultLifecycleTests : IDisposable
         var (ek, _) = Kem();
         var (pk, sk) = Sig();
 
-        var manifest = new PqSqliteManifest
+        var manifest = new PqSqlCipherManifest
         {
             KemAlgorithmId = "ML-KEM-768",
             SignatureAlgorithmId = "ML-DSA-65",
@@ -177,14 +177,14 @@ public class VaultLifecycleTests : IDisposable
         manifest.Recipients.Add(new RecipientEntry
         {
             Type = RecipientType.Kem,
-            Fingerprint = PqSqliteManifest.FingerprintOf(ek),
+            Fingerprint = PqSqlCipherManifest.FingerprintOf(ek),
             KemCiphertextOrSalt = new byte[1088],
             Nonce = new byte[12],
             WrappedDek = new byte[48],
         });
         manifest.Sign(new MlDsa65Signer(), sk);
 
-        var roundTripped = PqSqliteManifest.Deserialize(manifest.Serialize());
+        var roundTripped = PqSqlCipherManifest.Deserialize(manifest.Serialize());
         Assert.Equal(manifest.Serialize(), roundTripped.Serialize());
         roundTripped.Verify(new MlDsa65Signer(), new byte[16]); // does not throw
     }

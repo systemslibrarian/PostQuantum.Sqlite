@@ -10,9 +10,9 @@
 /SECURITY.md                            @systemslibrarian
 
 # Manifest format, signing, and trust-pinning code paths.
-/src/PostQuantum.Sqlite/PqSqliteManifest.cs   @systemslibrarian
-/src/PostQuantum.Sqlite/PqSqliteVault.cs      @systemslibrarian
-/src/PostQuantum.Sqlite/Internal/             @systemslibrarian
+/src/PostQuantum.SqlCipher.Vault/PqSqlCipherManifest.cs   @systemslibrarian
+/src/PostQuantum.SqlCipher.Vault/PqSqlCipherVault.cs      @systemslibrarian
+/src/PostQuantum.SqlCipher.Vault/Internal/             @systemslibrarian
 
 # CI, release, and supply-chain workflows.
 /.github/                               @systemslibrarian

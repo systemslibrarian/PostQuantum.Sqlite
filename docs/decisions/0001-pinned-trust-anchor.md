@@ -18,11 +18,11 @@ We need an out-of-band anchor of trust.
 
 ## Decision
 
-`PqSqliteVault` takes the trusted signer public key in its constructor.
+`PqSqlCipherVault` takes the trusted signer public key in its constructor.
 Every operation — including read paths — refuses manifests whose
 `signer-public-key` does not equal that pin, byte-for-byte.
 
-A second, deliberately-ugly factory (`PqSqliteVault.CreateUnpinned`)
+A second, deliberately-ugly factory (`PqSqlCipherVault.CreateUnpinned`)
 returns a vault that accepts any internally-consistent manifest. It is
 **read-only**: every mutating operation throws. It exists so inspection
 tooling can decode an arbitrary `.pqsm` without lying about its trust

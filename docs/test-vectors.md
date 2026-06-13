@@ -1,8 +1,8 @@
 # Test Vectors
 
-This document describes the official PostQuantum.Sqlite test vector
+This document describes the official PostQuantum.SqlCipher.Vault test vector
 corpus living under
-[`tests/PostQuantum.Sqlite.Tests/Vectors/`](../tests/PostQuantum.Sqlite.Tests/Vectors).
+[`tests/PostQuantum.SqlCipher.Vault.Tests/Vectors/`](../tests/PostQuantum.SqlCipher.Vault.Tests/Vectors).
 
 The corpus exists so an **independent** `.pqsm` implementation can
 prove conformance to the spec without trusting this code. If your
@@ -72,7 +72,7 @@ To accept this vector your implementation MUST be able to:
 6. Derive a 32-byte KEK via HKDF-SHA256 with:
    - `ikm`  = decapsulated shared secret
    - `salt` = `database.salt`
-   - `info` = `"PostQuantum.Sqlite/kek" || 0x00 || version (int32 BE) || 0x00 || "ML-KEM-768" || 0x00 || fingerprint`
+   - `info` = `"PostQuantum.SqlCipher.Vault/kek" || 0x00 || version (int32 BE) || 0x00 || "ML-KEM-768" || 0x00 || fingerprint`
    - `L`    = 32
 7. AES-256-GCM decrypt the recipient's `wrapped-dek` (32-byte ciphertext
    ‖ 16-byte tag) using the KEK, the recipient's `nonce`, and AAD =
@@ -106,13 +106,13 @@ The committed bytes are the source of truth. Regeneration is for
 maintainers who change the format and need to refresh the vectors:
 
 ```bash
-# 1. In tests/PostQuantum.Sqlite.Tests/VectorGenerator.cs, change
+# 1. In tests/PostQuantum.SqlCipher.Vault.Tests/VectorGenerator.cs, change
 #       [Fact(Skip = "Vector generator. ...")]
 #    to
 #       [Fact]
 #
 # 2. Run:
-dotnet test tests/PostQuantum.Sqlite.Tests \
+dotnet test tests/PostQuantum.SqlCipher.Vault.Tests \
     --filter "FullyQualifiedName~VectorGenerator" -c Release
 #
 # 3. Put the Skip back. Inspect `git diff Vectors/` and commit if intended.
@@ -125,11 +125,11 @@ equivalent and will pass the same conformance assertions.
 
 ## How `VectorTests` exercises the corpus
 
-[`tests/PostQuantum.Sqlite.Tests/VectorTests.cs`](../tests/PostQuantum.Sqlite.Tests/VectorTests.cs)
+[`tests/PostQuantum.SqlCipher.Vault.Tests/VectorTests.cs`](../tests/PostQuantum.SqlCipher.Vault.Tests/VectorTests.cs)
 is one possible conformance runner. xUnit `[Theory]` cases iterate
 through `manifest.json`; the positive case runs the eight steps
 above end-to-end; the negative cases assert that
-`PqSqliteManifest.Deserialize` throws a `PqSqliteException` whose
+`PqSqlCipherManifest.Deserialize` throws a `PqSqlCipherException` whose
 message contains the documented substring.
 
 Port the assertions to your test framework of choice; the corpus

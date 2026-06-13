@@ -68,5 +68,5 @@ decision (which would land here as ADR 0005).
   §4 (recipient entry).
 - [`docs/THREAT-MODEL.md`](../THREAT-MODEL.md) A7 (malicious manifest
   input).
-- [`tests/PostQuantum.Sqlite.Tests/HardeningTests.cs`](../../tests/PostQuantum.Sqlite.Tests/HardeningTests.cs)
+- [`tests/PostQuantum.SqlCipher.Vault.Tests/HardeningTests.cs`](../../tests/PostQuantum.SqlCipher.Vault.Tests/HardeningTests.cs)
   — the rejection corpus this decision is enforced against.

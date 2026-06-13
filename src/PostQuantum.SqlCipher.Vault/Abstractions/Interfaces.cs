@@ -1,4 +1,4 @@
-namespace PostQuantum.Sqlite.Abstractions;
+namespace PostQuantum.SqlCipher.Vault.Abstractions;
 
 /// <summary>
 /// Key encapsulation mechanism abstraction. The default implementation is

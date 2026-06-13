@@ -1,8 +1,8 @@
 using System.Formats.Cbor;
 using System.Security.Cryptography;
-using PostQuantum.Sqlite.Abstractions;
+using PostQuantum.SqlCipher.Vault.Abstractions;
 
-namespace PostQuantum.Sqlite;
+namespace PostQuantum.SqlCipher.Vault;
 
 /// <summary>Wire-level recipient kind. The integer value is the on-disk encoding.</summary>
 public enum RecipientType : int
@@ -48,7 +48,7 @@ public sealed class RecipientEntry
 /// lengths are all hard rejections. A security manifest format must never be
 /// forgiving about input it did not produce.
 /// </summary>
-public sealed class PqSqliteManifest
+public sealed class PqSqlCipherManifest
 {
     /// <summary>The current manifest format version. Strict-equality check at parse time.</summary>
     public const int CurrentVersion = 1;
@@ -68,7 +68,7 @@ public sealed class PqSqliteManifest
     public const int PassphraseSaltLength = 32;  // KDF salt for passphrase recipients
 
     // ── Structural bounds (DoS hardening; exact sizes enforced later
-    //    against the configured algorithms in PqSqliteVault) ───────────────
+    //    against the configured algorithms in PqSqlCipherVault) ───────────────
     private const int MaxAlgorithmIdLength = 64;
     private const int MaxKdfIdLength = 64;
     private const int MaxKdfParametersLength = 1024;
@@ -116,7 +116,7 @@ public sealed class PqSqliteManifest
     /// covered by the signature. The manifest format cannot prevent rollback
     /// (an attacker replaying an older validly-signed manifest + matching DB
     /// copy); applications that need rollback detection must track the last
-    /// known revision out-of-band and pass it to PqSqliteVault.Open.
+    /// known revision out-of-band and pass it to PqSqlCipherVault.Open.
     /// </summary>
     public long Revision { get; set; } = 1;
 
@@ -137,7 +137,7 @@ public sealed class PqSqliteManifest
     public void Sign(ISignatureAlgorithm signer, ReadOnlySpan<byte> signingPrivateKey)
     {
         if (signer.AlgorithmId != SignatureAlgorithmId)
-            throw new PqSqliteException($"Signer is {signer.AlgorithmId} but manifest declares {SignatureAlgorithmId}.");
+            throw new PqSqlCipherException($"Signer is {signer.AlgorithmId} but manifest declares {SignatureAlgorithmId}.");
         Signature = signer.Sign(signingPrivateKey, GetSignedPayload());
     }
 
@@ -145,17 +145,17 @@ public sealed class PqSqliteManifest
     public void Verify(ISignatureAlgorithm verifier, ReadOnlySpan<byte> actualDatabaseSalt)
     {
         if (Signature is null)
-            throw new PqSqliteException("Manifest is unsigned.");
+            throw new PqSqlCipherException("Manifest is unsigned.");
         if (verifier.AlgorithmId != SignatureAlgorithmId)
-            throw new PqSqliteException($"Manifest declares signature algorithm '{SignatureAlgorithmId}' but verifier is '{verifier.AlgorithmId}'.");
+            throw new PqSqlCipherException($"Manifest declares signature algorithm '{SignatureAlgorithmId}' but verifier is '{verifier.AlgorithmId}'.");
         if (SignerPublicKey.Length != verifier.PublicKeySizeInBytes)
-            throw new PqSqliteException("Signer public key has invalid length for the declared algorithm.");
+            throw new PqSqlCipherException("Signer public key has invalid length for the declared algorithm.");
         if (Signature.Length != verifier.SignatureSizeInBytes)
-            throw new PqSqliteException("Signature has invalid length for the declared algorithm.");
+            throw new PqSqlCipherException("Signature has invalid length for the declared algorithm.");
         if (!actualDatabaseSalt.SequenceEqual(DatabaseSalt))
-            throw new PqSqliteException("Manifest does not belong to this database file (salt mismatch). Possible substitution.");
+            throw new PqSqlCipherException("Manifest does not belong to this database file (salt mismatch). Possible substitution.");
         if (!verifier.Verify(SignerPublicKey, GetSignedPayload(), Signature))
-            throw new PqSqliteException("Manifest signature verification FAILED. The manifest has been tampered with or re-signed by an untrusted key.");
+            throw new PqSqlCipherException("Manifest signature verification FAILED. The manifest has been tampered with or re-signed by an untrusted key.");
     }
 
     // ── Recipient lookup ──────────────────────────────────────────────────
@@ -205,7 +205,7 @@ public sealed class PqSqliteManifest
             writer.WriteInt32(RKeyWrappedDek);  writer.WriteByteString(r.WrappedDek);
             if (hasKdf)
             {
-                writer.WriteInt32(RKeyKdfId);     writer.WriteTextString(r.KdfId ?? throw new PqSqliteException("Passphrase recipient missing KdfId."));
+                writer.WriteInt32(RKeyKdfId);     writer.WriteTextString(r.KdfId ?? throw new PqSqlCipherException("Passphrase recipient missing KdfId."));
                 writer.WriteInt32(RKeyKdfParams); writer.WriteByteString(r.KdfParameters ?? Array.Empty<byte>());
             }
             writer.WriteEndMap();
@@ -229,7 +229,7 @@ public sealed class PqSqliteManifest
     /// enforcement (wrong CBOR major types throw from the reader), exact
     /// lengths for fixed-size fields, and hard upper bounds on variable fields.
     /// </summary>
-    public static PqSqliteManifest Deserialize(byte[] cbor)
+    public static PqSqlCipherManifest Deserialize(byte[] cbor)
     {
         ArgumentNullException.ThrowIfNull(cbor);
         try
@@ -238,16 +238,16 @@ public sealed class PqSqliteManifest
         }
         catch (Exception ex) when (ex is CborContentException or InvalidOperationException or OverflowException)
         {
-            throw new PqSqliteException("Manifest is malformed (strict CBOR validation failed).", ex);
+            throw new PqSqlCipherException("Manifest is malformed (strict CBOR validation failed).", ex);
         }
     }
 
-    private static PqSqliteManifest DeserializeCore(byte[] cbor)
+    private static PqSqlCipherManifest DeserializeCore(byte[] cbor)
     {
         var reader = new CborReader(cbor, CborConformanceMode.Canonical);
         int? mapCountNullable = reader.ReadStartMap();
         if (mapCountNullable is not (7 or 8))
-            throw new PqSqliteException($"Manifest: expected 7 (unsigned) or 8 (signed) top-level fields, got {mapCountNullable?.ToString() ?? "indefinite"}.");
+            throw new PqSqlCipherException($"Manifest: expected 7 (unsigned) or 8 (signed) top-level fields, got {mapCountNullable?.ToString() ?? "indefinite"}.");
         int mapCount = mapCountNullable.Value;
 
         var seen = new HashSet<int>();
@@ -261,7 +261,7 @@ public sealed class PqSqliteManifest
         {
             int key = reader.ReadInt32();
             if (!seen.Add(key))
-                throw new PqSqliteException($"Manifest: duplicate field {key}.");
+                throw new PqSqlCipherException($"Manifest: duplicate field {key}.");
 
             switch (key)
             {
@@ -290,23 +290,23 @@ public sealed class PqSqliteManifest
                     signature = ReadBoundedBytes(reader, MaxVariableFieldLength, "signature");
                     break;
                 default:
-                    throw new PqSqliteException($"Manifest: unknown field {key} is not permitted in version {CurrentVersion}.");
+                    throw new PqSqlCipherException($"Manifest: unknown field {key} is not permitted in version {CurrentVersion}.");
             }
         }
         reader.ReadEndMap();
         if (reader.BytesRemaining != 0)
-            throw new PqSqliteException("Manifest: trailing bytes after CBOR document.");
+            throw new PqSqlCipherException("Manifest: trailing bytes after CBOR document.");
 
         if (version != CurrentVersion)
-            throw new PqSqliteException($"Unsupported manifest version {version}.");
+            throw new PqSqlCipherException($"Unsupported manifest version {version}.");
         if (kemId is null || sigId is null || salt is null || signerPk is null || recipients is null)
-            throw new PqSqliteException("Manifest is missing required fields.");
+            throw new PqSqlCipherException("Manifest is missing required fields.");
         if (revision < 1)
-            throw new PqSqliteException("Manifest: revision must be present and >= 1.");
+            throw new PqSqlCipherException("Manifest: revision must be present and >= 1.");
         if (mapCount == 8 && signature is null)
-            throw new PqSqliteException("Manifest: 8 fields present but no signature field.");
+            throw new PqSqlCipherException("Manifest: 8 fields present but no signature field.");
 
-        var manifest = new PqSqliteManifest
+        var manifest = new PqSqlCipherManifest
         {
             KemAlgorithmId = kemId,
             SignatureAlgorithmId = sigId,
@@ -323,9 +323,9 @@ public sealed class PqSqliteManifest
     private static List<RecipientEntry> ReadRecipients(CborReader reader)
     {
         int count = (int)(reader.ReadStartArray()
-            ?? throw new PqSqliteException("Manifest: indefinite-length recipient array not allowed."));
+            ?? throw new PqSqlCipherException("Manifest: indefinite-length recipient array not allowed."));
         if (count is < 1 or > MaxRecipients)
-            throw new PqSqliteException($"Manifest: recipient count {count} outside accepted range 1..{MaxRecipients}.");
+            throw new PqSqlCipherException($"Manifest: recipient count {count} outside accepted range 1..{MaxRecipients}.");
 
         var list = new List<RecipientEntry>(count);
         for (int i = 0; i < count; i++)
@@ -336,7 +336,7 @@ public sealed class PqSqliteManifest
         for (int i = 0; i < list.Count; i++)
             for (int j = i + 1; j < list.Count; j++)
                 if (list[i].Fingerprint.AsSpan().SequenceEqual(list[j].Fingerprint))
-                    throw new PqSqliteException("Manifest: duplicate recipient fingerprint.");
+                    throw new PqSqlCipherException("Manifest: duplicate recipient fingerprint.");
         return list;
     }
 
@@ -344,7 +344,7 @@ public sealed class PqSqliteManifest
     {
         int? mapCountNullable = reader.ReadStartMap();
         if (mapCountNullable is not (5 or 7))
-            throw new PqSqliteException($"Recipient: expected 5 (KEM) or 7 (passphrase) fields, got {mapCountNullable?.ToString() ?? "indefinite"}.");
+            throw new PqSqlCipherException($"Recipient: expected 5 (KEM) or 7 (passphrase) fields, got {mapCountNullable?.ToString() ?? "indefinite"}.");
         int mapCount = mapCountNullable.Value;
 
         var seen = new HashSet<int>();
@@ -356,7 +356,7 @@ public sealed class PqSqliteManifest
         {
             int key = reader.ReadInt32();
             if (!seen.Add(key))
-                throw new PqSqliteException($"Recipient: duplicate field {key}.");
+                throw new PqSqlCipherException($"Recipient: duplicate field {key}.");
 
             switch (key)
             {
@@ -368,28 +368,28 @@ public sealed class PqSqliteManifest
                 case RKeyKdfId:       kdfId = ReadBoundedText(reader, MaxKdfIdLength, "KDF id"); break;
                 case RKeyKdfParams:   kdfParams = ReadBoundedBytes(reader, MaxKdfParametersLength, "KDF parameters"); break;
                 default:
-                    throw new PqSqliteException($"Recipient: unknown field {key} is not permitted in version {CurrentVersion}.");
+                    throw new PqSqlCipherException($"Recipient: unknown field {key} is not permitted in version {CurrentVersion}.");
             }
         }
         reader.ReadEndMap();
 
         if (fp is null || ctOrSalt is null || nonce is null || wrapped is null)
-            throw new PqSqliteException("Recipient entry is missing required fields.");
+            throw new PqSqlCipherException("Recipient entry is missing required fields.");
 
         switch ((RecipientType)type)
         {
             case RecipientType.Kem:
                 if (mapCount != 5 || kdfId is not null || kdfParams is not null)
-                    throw new PqSqliteException("KEM recipient must have exactly fields 1-5 and no KDF fields.");
+                    throw new PqSqlCipherException("KEM recipient must have exactly fields 1-5 and no KDF fields.");
                 break;
             case RecipientType.Passphrase:
                 if (mapCount != 7 || kdfId is null || kdfParams is null)
-                    throw new PqSqliteException("Passphrase recipient must have exactly fields 1-7 including KDF id and parameters.");
+                    throw new PqSqlCipherException("Passphrase recipient must have exactly fields 1-7 including KDF id and parameters.");
                 if (ctOrSalt.Length != PassphraseSaltLength)
-                    throw new PqSqliteException($"Passphrase recipient KDF salt must be exactly {PassphraseSaltLength} bytes.");
+                    throw new PqSqlCipherException($"Passphrase recipient KDF salt must be exactly {PassphraseSaltLength} bytes.");
                 break;
             default:
-                throw new PqSqliteException($"Recipient: unknown type {type}.");
+                throw new PqSqlCipherException($"Recipient: unknown type {type}.");
         }
 
         return new RecipientEntry
@@ -408,7 +408,7 @@ public sealed class PqSqliteManifest
     {
         byte[] value = reader.ReadByteString();
         if (value.Length != expectedLength)
-            throw new PqSqliteException($"Manifest: {fieldName} must be exactly {expectedLength} bytes, got {value.Length}.");
+            throw new PqSqlCipherException($"Manifest: {fieldName} must be exactly {expectedLength} bytes, got {value.Length}.");
         return value;
     }
 
@@ -416,7 +416,7 @@ public sealed class PqSqliteManifest
     {
         byte[] value = reader.ReadByteString();
         if (value.Length is 0 || value.Length > maxLength)
-            throw new PqSqliteException($"Manifest: {fieldName} length {value.Length} outside accepted range 1..{maxLength}.");
+            throw new PqSqlCipherException($"Manifest: {fieldName} length {value.Length} outside accepted range 1..{maxLength}.");
         return value;
     }
 
@@ -424,7 +424,7 @@ public sealed class PqSqliteManifest
     {
         string value = reader.ReadTextString();
         if (value.Length is 0 || value.Length > maxLength)
-            throw new PqSqliteException($"Manifest: {fieldName} length outside accepted range 1..{maxLength}.");
+            throw new PqSqlCipherException($"Manifest: {fieldName} length outside accepted range 1..{maxLength}.");
         return value;
     }
 
@@ -464,24 +464,24 @@ public sealed class PqSqliteManifest
     }
 
     /// <summary>Load the primary sidecar for <paramref name="databasePath"/> and strict-parse it. Does NOT verify the signature; use a vault for that.</summary>
-    public static PqSqliteManifest Load(string databasePath) =>
+    public static PqSqlCipherManifest Load(string databasePath) =>
         LoadFromSidecar(SidecarPathFor(databasePath));
 
     /// <summary>Load and strict-parse a manifest from an arbitrary sidecar path. Does NOT verify the signature.</summary>
-    public static PqSqliteManifest LoadFromSidecar(string sidecarPath)
+    public static PqSqlCipherManifest LoadFromSidecar(string sidecarPath)
     {
         if (!File.Exists(sidecarPath))
-            throw new PqSqliteException($"Manifest sidecar not found: {sidecarPath}");
+            throw new PqSqlCipherException($"Manifest sidecar not found: {sidecarPath}");
         return Deserialize(File.ReadAllBytes(sidecarPath));
     }
 }
 
-/// <summary>The exception type all PostQuantum.Sqlite operations surface for trust-pin, parse, crypto, and I/O failures.</summary>
-public sealed class PqSqliteException : Exception
+/// <summary>The exception type all PostQuantum.SqlCipher.Vault operations surface for trust-pin, parse, crypto, and I/O failures.</summary>
+public sealed class PqSqlCipherException : Exception
 {
     /// <summary>Construct an exception with a human-readable message.</summary>
-    public PqSqliteException(string message) : base(message) { }
+    public PqSqlCipherException(string message) : base(message) { }
 
     /// <summary>Construct an exception wrapping an inner cause.</summary>
-    public PqSqliteException(string message, Exception inner) : base(message, inner) { }
+    public PqSqlCipherException(string message, Exception inner) : base(message, inner) { }
 }

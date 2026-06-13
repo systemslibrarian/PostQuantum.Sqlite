@@ -1,10 +1,10 @@
 using System.Formats.Cbor;
-using PostQuantum.Sqlite;
-using PostQuantum.Sqlite.Abstractions;
-using PostQuantum.Sqlite.Algorithms;
+using PostQuantum.SqlCipher.Vault;
+using PostQuantum.SqlCipher.Vault.Abstractions;
+using PostQuantum.SqlCipher.Vault.Algorithms;
 using Xunit;
 
-namespace PostQuantum.Sqlite.Tests;
+namespace PostQuantum.SqlCipher.Vault.Tests;
 
 public class HardeningTests : IDisposable
 {
@@ -26,16 +26,16 @@ public class HardeningTests : IDisposable
         var (pk, sk) = Sig();
 
         // Set up a database with a properly pinned vault first.
-        new PqSqliteVault(pk).Create(DbPath, new[] { new KemRecipient(ek) }, sk).Dispose();
+        new PqSqlCipherVault(pk).Create(DbPath, new[] { new KemRecipient(ek) }, sk).Dispose();
 
-        var unpinned = PqSqliteVault.CreateUnpinned();
+        var unpinned = PqSqlCipherVault.CreateUnpinned();
         Assert.False(unpinned.IsPinned);
 
-        Assert.Throws<PqSqliteException>(() => unpinned.Create(Path.Combine(_dir, "x.db"), new[] { new KemRecipient(ek) }, sk));
-        Assert.Throws<PqSqliteException>(() => unpinned.AddRecipient(DbPath, new KemRecipient(ek2), dk, ek, sk));
-        Assert.Throws<PqSqliteException>(() => unpinned.AddPassphraseRecipient(DbPath, "pw", dk, ek, sk));
-        Assert.Throws<PqSqliteException>(() => unpinned.RotateDek(DbPath, dk, ek, sk));
-        Assert.Throws<PqSqliteException>(() => unpinned.RemoveRecipientAndRotate(DbPath, new KemRecipient(ek2).Fingerprint, dk, ek, sk));
+        Assert.Throws<PqSqlCipherException>(() => unpinned.Create(Path.Combine(_dir, "x.db"), new[] { new KemRecipient(ek) }, sk));
+        Assert.Throws<PqSqlCipherException>(() => unpinned.AddRecipient(DbPath, new KemRecipient(ek2), dk, ek, sk));
+        Assert.Throws<PqSqlCipherException>(() => unpinned.AddPassphraseRecipient(DbPath, "pw", dk, ek, sk));
+        Assert.Throws<PqSqlCipherException>(() => unpinned.RotateDek(DbPath, dk, ek, sk));
+        Assert.Throws<PqSqlCipherException>(() => unpinned.RemoveRecipientAndRotate(DbPath, new KemRecipient(ek2).Fingerprint, dk, ek, sk));
     }
 
     [Fact]
@@ -45,11 +45,11 @@ public class HardeningTests : IDisposable
         var (pk, sk) = Sig();
         var (evilPk, evilSk) = Sig();
 
-        new PqSqliteVault(pk).Create(DbPath, new[] { new KemRecipient(ek) }, sk).Dispose();
+        new PqSqlCipherVault(pk).Create(DbPath, new[] { new KemRecipient(ek) }, sk).Dispose();
 
         // Attacker re-signs under their own key.
-        var manifest = PqSqliteManifest.Load(DbPath);
-        var forged = new PqSqliteManifest
+        var manifest = PqSqlCipherManifest.Load(DbPath);
+        var forged = new PqSqlCipherManifest
         {
             KemAlgorithmId = manifest.KemAlgorithmId,
             SignatureAlgorithmId = manifest.SignatureAlgorithmId,
@@ -63,13 +63,13 @@ public class HardeningTests : IDisposable
 
         // The pinned vault refuses; the unpinned vault demonstrates the
         // documented risk: self-attestation passes without a trust anchor.
-        Assert.Throws<PqSqliteException>(() => new PqSqliteVault(pk).Open(DbPath, dk, ek));
-        PqSqliteVault.CreateUnpinned().Open(DbPath, dk, ek).Dispose();
+        Assert.Throws<PqSqlCipherException>(() => new PqSqlCipherVault(pk).Open(DbPath, dk, ek));
+        PqSqlCipherVault.CreateUnpinned().Open(DbPath, dk, ek).Dispose();
     }
 
     [Fact]
     public void Constructor_Rejects_Wrong_Length_Trust_Anchor() =>
-        Assert.Throws<PqSqliteException>(() => new PqSqliteVault(new byte[16]));
+        Assert.Throws<PqSqlCipherException>(() => new PqSqlCipherVault(new byte[16]));
 
     [Fact]
     public void Mutating_Operation_Rejects_Manifest_Signed_By_Untrusted_Key()
@@ -78,12 +78,12 @@ public class HardeningTests : IDisposable
         var (ek2, _) = Kem();
         var (pk, sk) = Sig();
         var (evilPk, evilSk) = Sig();
-        var vault = new PqSqliteVault(pk);
+        var vault = new PqSqlCipherVault(pk);
 
         vault.Create(DbPath, new[] { new KemRecipient(ek) }, sk).Dispose();
 
-        var manifest = PqSqliteManifest.Load(DbPath);
-        var forged = new PqSqliteManifest
+        var manifest = PqSqlCipherManifest.Load(DbPath);
+        var forged = new PqSqlCipherManifest
         {
             KemAlgorithmId = manifest.KemAlgorithmId,
             SignatureAlgorithmId = manifest.SignatureAlgorithmId,
@@ -97,7 +97,7 @@ public class HardeningTests : IDisposable
 
         // The forged manifest verifies under its OWN embedded key — but the
         // vault pins the legitimate signer and must refuse.
-        var ex = Assert.Throws<PqSqliteException>(() =>
+        var ex = Assert.Throws<PqSqlCipherException>(() =>
             vault.AddRecipient(DbPath, new KemRecipient(ek2), dk, ek, sk));
         Assert.Contains("pinned trust anchor", ex.Message);
     }
@@ -109,12 +109,12 @@ public class HardeningTests : IDisposable
         var (ek2, _) = Kem();
         var (pk, sk) = Sig();
         var (_, otherSk) = Sig();
-        var vault = new PqSqliteVault(pk);
+        var vault = new PqSqlCipherVault(pk);
 
         vault.Create(DbPath, new[] { new KemRecipient(ek) }, sk).Dispose();
 
         // Trust anchor is correct, but the private key handed in doesn't match it.
-        var ex = Assert.Throws<PqSqliteException>(() =>
+        var ex = Assert.Throws<PqSqlCipherException>(() =>
             vault.AddRecipient(DbPath, new KemRecipient(ek2), dk, ek, otherSk));
         Assert.Contains("does not correspond", ex.Message);
     }
@@ -180,37 +180,37 @@ public class HardeningTests : IDisposable
     [Fact]
     public void Wellformed_Crafted_Manifest_Parses()
     {
-        var manifest = PqSqliteManifest.Deserialize(CraftManifestCbor());
+        var manifest = PqSqlCipherManifest.Deserialize(CraftManifestCbor());
         Assert.Equal("ML-KEM-768", manifest.KemAlgorithmId);
         Assert.Single(manifest.Recipients);
     }
 
     [Fact]
     public void Unknown_TopLevel_Field_Is_Rejected() =>
-        Assert.Throws<PqSqliteException>(() => PqSqliteManifest.Deserialize(CraftManifestCbor(extraTopLevelKey: 99)));
+        Assert.Throws<PqSqlCipherException>(() => PqSqlCipherManifest.Deserialize(CraftManifestCbor(extraTopLevelKey: 99)));
 
     [Fact]
     public void Duplicate_Recipient_Field_Is_Rejected() =>
-        Assert.Throws<PqSqliteException>(() => PqSqliteManifest.Deserialize(CraftManifestCbor(duplicateRecipientField: true)));
+        Assert.Throws<PqSqlCipherException>(() => PqSqlCipherManifest.Deserialize(CraftManifestCbor(duplicateRecipientField: true)));
 
     [Fact]
     public void Truncated_Nonce_Is_Rejected() =>
-        Assert.Throws<PqSqliteException>(() => PqSqliteManifest.Deserialize(CraftManifestCbor(nonceLength: 11)));
+        Assert.Throws<PqSqlCipherException>(() => PqSqlCipherManifest.Deserialize(CraftManifestCbor(nonceLength: 11)));
 
     [Fact]
     public void Wrong_Salt_Length_Is_Rejected() =>
-        Assert.Throws<PqSqliteException>(() => PqSqliteManifest.Deserialize(CraftManifestCbor(saltLength: 15)));
+        Assert.Throws<PqSqlCipherException>(() => PqSqlCipherManifest.Deserialize(CraftManifestCbor(saltLength: 15)));
 
     [Fact]
     public void NonCanonical_Key_Order_Is_Rejected() =>
-        Assert.Throws<PqSqliteException>(() => PqSqliteManifest.Deserialize(CraftManifestCbor(unsortedTopLevelKeys: true)));
+        Assert.Throws<PqSqlCipherException>(() => PqSqlCipherManifest.Deserialize(CraftManifestCbor(unsortedTopLevelKeys: true)));
 
     [Fact]
     public void Trailing_Bytes_Are_Rejected()
     {
         byte[] valid = CraftManifestCbor();
         byte[] padded = valid.Concat(new byte[] { 0x00 }).ToArray();
-        Assert.Throws<PqSqliteException>(() => PqSqliteManifest.Deserialize(padded));
+        Assert.Throws<PqSqlCipherException>(() => PqSqlCipherManifest.Deserialize(padded));
     }
 
     // ── Crash-safe rotation ───────────────────────────────────────────────
@@ -220,23 +220,23 @@ public class HardeningTests : IDisposable
     {
         var (ek, dk) = Kem();
         var (pk, sk) = Sig();
-        var vault = new PqSqliteVault(pk);
+        var vault = new PqSqlCipherVault(pk);
 
         // M1/D1 state, then a completed rotation to M2/D2.
         vault.Create(DbPath, new[] { new KemRecipient(ek) }, sk).Dispose();
-        byte[] m1 = File.ReadAllBytes(PqSqliteManifest.SidecarPathFor(DbPath));
+        byte[] m1 = File.ReadAllBytes(PqSqlCipherManifest.SidecarPathFor(DbPath));
         vault.RotateDek(DbPath, dk, ek, sk);
-        byte[] m2 = File.ReadAllBytes(PqSqliteManifest.SidecarPathFor(DbPath));
+        byte[] m2 = File.ReadAllBytes(PqSqlCipherManifest.SidecarPathFor(DbPath));
 
         // Simulate crash-after-rekey-before-promote: DB is at D2, primary
         // sidecar rolled back to stale M1, M2 sits as pending.
-        File.WriteAllBytes(PqSqliteManifest.SidecarPathFor(DbPath), m1);
-        File.WriteAllBytes(PqSqliteManifest.PendingSidecarPathFor(DbPath), m2);
+        File.WriteAllBytes(PqSqlCipherManifest.SidecarPathFor(DbPath), m1);
+        File.WriteAllBytes(PqSqlCipherManifest.PendingSidecarPathFor(DbPath), m2);
 
         // Open must recover via the pending manifest and promote it.
         vault.Open(DbPath, dk, ek).Dispose();
-        Assert.False(File.Exists(PqSqliteManifest.PendingSidecarPathFor(DbPath)));
-        Assert.Equal(m2, File.ReadAllBytes(PqSqliteManifest.SidecarPathFor(DbPath)));
+        Assert.False(File.Exists(PqSqlCipherManifest.PendingSidecarPathFor(DbPath)));
+        Assert.Equal(m2, File.ReadAllBytes(PqSqlCipherManifest.SidecarPathFor(DbPath)));
     }
 
     [Fact]
@@ -244,16 +244,16 @@ public class HardeningTests : IDisposable
     {
         var (ek, dk) = Kem();
         var (pk, sk) = Sig();
-        var vault = new PqSqliteVault(pk);
+        var vault = new PqSqlCipherVault(pk);
 
         vault.Create(DbPath, new[] { new KemRecipient(ek) }, sk).Dispose();
 
         // Simulate crash-after-pending-write-before-rekey: DB still at D1,
         // primary M1 is correct, a pending file exists but was never applied.
-        File.Copy(PqSqliteManifest.SidecarPathFor(DbPath), PqSqliteManifest.PendingSidecarPathFor(DbPath));
+        File.Copy(PqSqlCipherManifest.SidecarPathFor(DbPath), PqSqlCipherManifest.PendingSidecarPathFor(DbPath));
 
         vault.Open(DbPath, dk, ek).Dispose();
-        Assert.False(File.Exists(PqSqliteManifest.PendingSidecarPathFor(DbPath)));
+        Assert.False(File.Exists(PqSqlCipherManifest.PendingSidecarPathFor(DbPath)));
     }
 
     // ── KDF enforcement ───────────────────────────────────────────────────
@@ -271,14 +271,14 @@ public class HardeningTests : IDisposable
     {
         var (ek, dk) = Kem();
         var (pk, sk) = Sig();
-        var vault = new PqSqliteVault(pk);
+        var vault = new PqSqlCipherVault(pk);
 
         vault.Create(DbPath, new[] { new KemRecipient(ek) }, sk).Dispose();
         vault.AddPassphraseRecipient(DbPath, "hunter2hunter2", dk, ek, sk, kdf: new RenamedKdf());
 
         // Entry is recorded as "Argon2id"; opening with the PBKDF2 default must refuse
         // to derive rather than silently producing garbage with the wrong KDF.
-        var ex = Assert.Throws<PqSqliteException>(() =>
+        var ex = Assert.Throws<PqSqlCipherException>(() =>
             vault.OpenWithPassphrase(DbPath, "hunter2hunter2", kdf: new Pbkdf2PasswordKdf(iterations: 10_000)));
         Assert.Contains("mismatched KDF", ex.Message);
 
@@ -293,18 +293,18 @@ public class HardeningTests : IDisposable
     {
         var (ek, dk) = Kem();
         var (pk, sk) = Sig();
-        var vault = new PqSqliteVault(pk);
+        var vault = new PqSqlCipherVault(pk);
 
         vault.Create(DbPath, new[] { new KemRecipient(ek) }, sk).Dispose();
 
         // Simulate "rotation aborted mid-AtomicWrite": a malformed file sits
         // at the .pending path. Open MUST succeed off the primary AND delete
         // the corrupt pending so it can't bite a future call.
-        File.WriteAllBytes(PqSqliteManifest.PendingSidecarPathFor(DbPath),
+        File.WriteAllBytes(PqSqlCipherManifest.PendingSidecarPathFor(DbPath),
             new byte[] { 0xFF, 0xFF, 0xFF, 0xFF });
 
         vault.Open(DbPath, dk, ek).Dispose();
-        Assert.False(File.Exists(PqSqliteManifest.PendingSidecarPathFor(DbPath)));
+        Assert.False(File.Exists(PqSqlCipherManifest.PendingSidecarPathFor(DbPath)));
     }
 
     [Fact]
@@ -312,19 +312,19 @@ public class HardeningTests : IDisposable
     {
         var (ek, dk) = Kem();
         var (pk, sk) = Sig();
-        var vault = new PqSqliteVault(pk);
+        var vault = new PqSqlCipherVault(pk);
 
         vault.Create(DbPath, new[] { new KemRecipient(ek) }, sk).Dispose();
 
-        // Both sidecars unparseable. Open MUST surface a PqSqliteException
+        // Both sidecars unparseable. Open MUST surface a PqSqlCipherException
         // (no NRE, no IndexOutOfRange, no CborContentException leaking out).
-        File.WriteAllBytes(PqSqliteManifest.SidecarPathFor(DbPath), new byte[] { 0x00 });
-        File.WriteAllBytes(PqSqliteManifest.PendingSidecarPathFor(DbPath), new byte[] { 0x00 });
+        File.WriteAllBytes(PqSqlCipherManifest.SidecarPathFor(DbPath), new byte[] { 0x00 });
+        File.WriteAllBytes(PqSqlCipherManifest.PendingSidecarPathFor(DbPath), new byte[] { 0x00 });
 
-        var ex = Assert.Throws<PqSqliteException>(() => vault.Open(DbPath, dk, ek));
+        var ex = Assert.Throws<PqSqlCipherException>(() => vault.Open(DbPath, dk, ek));
         Assert.Contains("Could not resolve", ex.Message, StringComparison.OrdinalIgnoreCase);
         // The inner cause must surface the actual parse failure, not be lost.
-        Assert.IsType<PqSqliteException>(ex.InnerException);
+        Assert.IsType<PqSqlCipherException>(ex.InnerException);
         Assert.Contains("malformed", ex.InnerException!.Message, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -333,7 +333,7 @@ public class HardeningTests : IDisposable
     {
         var (ek, dk) = Kem();
         var (pk, sk) = Sig();
-        var vault = new PqSqliteVault(pk);
+        var vault = new PqSqlCipherVault(pk);
 
         string dbA = Path.Combine(_dir, "a.db");
         string dbB = Path.Combine(_dir, "b.db");
@@ -343,19 +343,19 @@ public class HardeningTests : IDisposable
         // Attacker drops a valid manifest from a DIFFERENT database into b's
         // .pending slot. Even if b's primary somehow failed, the cross-DB
         // pending must be rejected via salt binding, not silently promoted.
-        File.Copy(PqSqliteManifest.SidecarPathFor(dbA),
-                  PqSqliteManifest.PendingSidecarPathFor(dbB), overwrite: true);
+        File.Copy(PqSqlCipherManifest.SidecarPathFor(dbA),
+                  PqSqlCipherManifest.PendingSidecarPathFor(dbB), overwrite: true);
 
         // Corrupt b's primary to force the recovery path to consider the pending.
-        byte[] primary = File.ReadAllBytes(PqSqliteManifest.SidecarPathFor(dbB));
+        byte[] primary = File.ReadAllBytes(PqSqlCipherManifest.SidecarPathFor(dbB));
         primary[^20] ^= 0xFF;
-        File.WriteAllBytes(PqSqliteManifest.SidecarPathFor(dbB), primary);
+        File.WriteAllBytes(PqSqlCipherManifest.SidecarPathFor(dbB), primary);
 
-        Assert.Throws<PqSqliteException>(() => vault.Open(dbB, dk, ek));
+        Assert.Throws<PqSqlCipherException>(() => vault.Open(dbB, dk, ek));
         // The pending sidecar should still be present — it was authentic for
         // dbA, just not for dbB. We must not silently delete legitimate state
         // belonging to another database that lives in the wrong directory.
-        Assert.True(File.Exists(PqSqliteManifest.PendingSidecarPathFor(dbB)));
+        Assert.True(File.Exists(PqSqlCipherManifest.PendingSidecarPathFor(dbB)));
     }
 
     [Fact]
@@ -363,7 +363,7 @@ public class HardeningTests : IDisposable
     {
         var (ek, dk) = Kem();
         var (pk, sk) = Sig();
-        var vault = new PqSqliteVault(pk);
+        var vault = new PqSqlCipherVault(pk);
 
         vault.Create(DbPath, new[] { new KemRecipient(ek) }, sk).Dispose();
 
@@ -372,7 +372,7 @@ public class HardeningTests : IDisposable
         // impossible; verify Open and a mutating op both still work and the
         // stray file is left untouched (it is not our responsibility to GC
         // arbitrary files in the user's directory).
-        string strayTmp = PqSqliteManifest.SidecarPathFor(DbPath) + ".deadbeef.tmp";
+        string strayTmp = PqSqlCipherManifest.SidecarPathFor(DbPath) + ".deadbeef.tmp";
         File.WriteAllBytes(strayTmp, new byte[] { 0xDE, 0xAD, 0xBE, 0xEF });
 
         vault.Open(DbPath, dk, ek).Dispose();
@@ -392,27 +392,27 @@ public class HardeningTests : IDisposable
         var (ek1, dk1) = Kem();
         var (ek2, dk2) = Kem();
         var (pk, sk) = Sig();
-        var vault = new PqSqliteVault(pk);
+        var vault = new PqSqlCipherVault(pk);
 
         vault.Create(DbPath, new[] { new KemRecipient(ek1), new KemRecipient(ek2) }, sk).Dispose();
-        byte[] oldManifest = File.ReadAllBytes(PqSqliteManifest.SidecarPathFor(DbPath));
+        byte[] oldManifest = File.ReadAllBytes(PqSqlCipherManifest.SidecarPathFor(DbPath));
         byte[] oldDb = File.ReadAllBytes(DbPath);
 
         // Revoke recipient 2 (revision bumps via rotation).
         vault.RemoveRecipientAndRotate(DbPath, new KemRecipient(ek2).Fingerprint, dk1, ek1, sk);
-        long newRevision = PqSqliteManifest.Load(DbPath).Revision;
+        long newRevision = PqSqlCipherManifest.Load(DbPath).Revision;
         Assert.True(newRevision > 1);
 
         // Attacker rolls back BOTH the database and the manifest to the
         // pre-revocation state. Both are authentic — signature passes.
         File.WriteAllBytes(DbPath, oldDb);
-        File.WriteAllBytes(PqSqliteManifest.SidecarPathFor(DbPath), oldManifest);
+        File.WriteAllBytes(PqSqlCipherManifest.SidecarPathFor(DbPath), oldManifest);
 
         // Without a pinned minimum the rollback is undetectable by design...
         vault.Open(DbPath, dk2, ek2).Dispose();
 
         // ...but an application tracking the revision out-of-band catches it.
-        var ex = Assert.Throws<PqSqliteException>(() =>
+        var ex = Assert.Throws<PqSqlCipherException>(() =>
             vault.Open(DbPath, dk2, ek2, expectedMinimumRevision: newRevision));
         Assert.Contains("rollback", ex.Message, StringComparison.OrdinalIgnoreCase);
     }

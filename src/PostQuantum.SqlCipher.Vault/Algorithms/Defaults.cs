@@ -1,8 +1,8 @@
 using System.Formats.Cbor;
 using System.Security.Cryptography;
-using PostQuantum.Sqlite.Abstractions;
+using PostQuantum.SqlCipher.Vault.Abstractions;
 
-namespace PostQuantum.Sqlite.Algorithms;
+namespace PostQuantum.SqlCipher.Vault.Algorithms;
 
 /// <summary>
 /// ML-KEM-768 (FIPS 203) over the .NET 10 BCL.
@@ -128,13 +128,13 @@ public sealed class Pbkdf2PasswordKdf : IPasswordKdf
             reader.ReadStartMap();
             string key = reader.ReadTextString();
             if (key != "iterations")
-                throw new PqSqliteException($"Unknown PBKDF2 parameter '{key}'.");
+                throw new PqSqlCipherException($"Unknown PBKDF2 parameter '{key}'.");
             iterations = reader.ReadInt32();
             reader.ReadEndMap();
             if (reader.BytesRemaining != 0)
-                throw new PqSqliteException("Trailing bytes after PBKDF2 parameters.");
+                throw new PqSqlCipherException("Trailing bytes after PBKDF2 parameters.");
             if (iterations is < MinIterations or > MaxIterations)
-                throw new PqSqliteException($"PBKDF2 iteration count {iterations} outside accepted range.");
+                throw new PqSqlCipherException($"PBKDF2 iteration count {iterations} outside accepted range.");
         }
 
         // Encode chars directly to a zeroable byte buffer. passphrase.ToArray()
